@@ -65,6 +65,8 @@ class ProgramSearch:
         self.best_program = None
         self.best_program_fitness = None
 
+        self._validate_arguments()
+
     def search(self) -> Tuple[Program, float]:
         steps_counter = 1
         self._initialize_population()
@@ -144,11 +146,6 @@ class ProgramSearch:
         if self.replace_arg_for_const_prob < 0 or self.replace_arg_for_const_prob > 1:
             raise InvalidProgramSearchArgumentValue(
                 f"replace_arg_for_const_prob must be between 0 and 1, got {self.replace_arg_for_const_prob}."
-            )
-
-        if len(self.mutation_probs) != 3:
-            raise InvalidProgramSearchArgumentValue(
-                f"mutation_probs musi mieć dokładnie 3 elementy, ale podano {len(self.mutation_probs)}."
             )
 
         if abs(sum(self.mutation_probs.values()) - 1.0) > 1e-6:
