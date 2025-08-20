@@ -14,7 +14,7 @@ from program_searcher.mutation_strategy import (
 from program_searcher.program_model import Program, Statement, WarmStartProgram
 from program_searcher.stop_condition import StopCondition
 
-_DEFAULT_MUTATION_PROBS = {
+_DEFAULT_MUTATION_STRATEGIES = {
     UpdateStatementArgsMutationStrategy(): 1 / 3,
     InsertStatementMutationStrategy(): 1 / 3,
     RemoveStatementMutationStrategy(): 1 / 3,
@@ -37,7 +37,9 @@ class ProgramSearch:
         pop_size: int = 1000,
         tournament_size: int = 2,
         replace_arg_for_const_prob: float = 0.25,
-        mutation_stategies: Dict[MutationStrategy, float] = _DEFAULT_MUTATION_PROBS,
+        mutation_stategies: Dict[
+            MutationStrategy, float
+        ] = _DEFAULT_MUTATION_STRATEGIES,
         restart_steps: int = None,
         warm_start_program: WarmStartProgram = None,
         logger: logging.Logger = None,
@@ -151,15 +153,15 @@ class ProgramSearch:
 
         if abs(sum(self.mutation_strategies.values()) - 1.0) > 1e-6:
             raise InvalidProgramSearchArgumentValue(
-                f"Suma wartości w mutation_probs musi wynosić 1.0, ale wynosi {sum(self.mutation_strategies.values())}."
+                f"sum of mutation_strategies values must be 1.0, but is {sum(self.mutation_strategies.values())}."
             )
 
         if any(value < 0 for value in self.mutation_strategies.values()):
             raise InvalidProgramSearchArgumentValue(
-                f"Wszystkie wartości w mutation_probs muszą być >= 0. Aktualne wartości: {self.mutation_strategies}."
+                f"all mutation_strategies values must be >= 0. current values: {self.mutation_strategies}."
             )
 
         if any(value > 1 for value in self.mutation_strategies.values()):
             raise InvalidProgramSearchArgumentValue(
-                f"Wszystkie wartości w mutation_probs muszą być <= 1. Aktualne wartości: {self.mutation_strategies}."
+                f"all mutation_strategies values must be <= 1. current values: {self.mutation_strategies}."
             )

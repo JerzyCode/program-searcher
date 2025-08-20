@@ -22,7 +22,7 @@ class TestProgramSearchValidation(unittest.TestCase):
             "pop_size": 10,
             "tournament_size": 2,
             "replace_arg_for_const_prob": 0.5,
-            "mutation_probs": {
+            "mutation_strategies": {
                 RemoveStatementMutationStrategy: 0.3,
                 InsertStatementMutationStrategy: 0.3,
                 UpdateStatementArgsMutationStrategy: 0.4,
@@ -72,9 +72,9 @@ class TestProgramSearchValidation(unittest.TestCase):
         with self.assertRaises(InvalidProgramSearchArgumentValue):
             ProgramSearch(**args)
 
-    def test_invalid_mutation_probs_sum(self):
+    def test_invalid_mutation_strategies_sum(self):
         args = self.correct_args.copy()
-        args["mutation_probs"] = {
+        args["mutation_strategies"] = {
             InsertStatementMutationStrategy: 0.5,
             RemoveStatementMutationStrategy: 0.5,
             UpdateStatementArgsMutationStrategy: 0.5,
@@ -82,9 +82,9 @@ class TestProgramSearchValidation(unittest.TestCase):
         with self.assertRaises(InvalidProgramSearchArgumentValue):
             ProgramSearch(**args)
 
-    def test_mutation_probs_negative_value(self):
+    def test_mutation_strategies_negative_value(self):
         args = self.correct_args.copy()
-        args["mutation_probs"] = {
+        args["mutation_strategies"] = {
             RemoveStatementMutationStrategy: -0.1,
             InsertStatementMutationStrategy: 0.6,
             UpdateStatementArgsMutationStrategy: 0.5,
@@ -92,9 +92,9 @@ class TestProgramSearchValidation(unittest.TestCase):
         with self.assertRaises(InvalidProgramSearchArgumentValue):
             ProgramSearch(**args)
 
-    def test_mutation_probs_value_greater_than_one(self):
+    def test_mutation_strategies_value_greater_than_one(self):
         args = self.correct_args.copy()
-        args["mutation_probs"] = {
+        args["mutation_strategies"] = {
             RemoveStatementMutationStrategy: 1.1,
             InsertStatementMutationStrategy: -0.05,
             UpdateStatementArgsMutationStrategy: -0.05,
