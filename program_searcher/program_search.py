@@ -15,9 +15,9 @@ from program_searcher.program_model import Program, Statement, WarmStartProgram
 from program_searcher.stop_condition import StopCondition
 
 _DEFAULT_MUTATION_PROBS = {
-    UpdateStatementArgsMutationStrategy: 1 / 3,
-    InsertStatementMutationStrategy: 1 / 3,
-    RemoveStatementMutationStrategy: 1 / 3,
+    UpdateStatementArgsMutationStrategy(): 1 / 3,
+    InsertStatementMutationStrategy(): 1 / 3,
+    RemoveStatementMutationStrategy(): 1 / 3,
 }
 
 
@@ -37,7 +37,7 @@ class ProgramSearch:
         pop_size: int = 1000,
         tournament_size: int = 2,
         replace_arg_for_const_prob: float = 0.25,
-        mutation_probs: Dict[MutationStrategy, float] = _DEFAULT_MUTATION_PROBS,
+        mutation_stategies: Dict[MutationStrategy, float] = _DEFAULT_MUTATION_PROBS,
         restart_steps: int = None,
         warm_start_program: WarmStartProgram = None,
         logger: logging.Logger = None,
@@ -53,7 +53,7 @@ class ProgramSearch:
         self.pop_size = pop_size
         self.tournament_size = tournament_size
         self.replace_arg_for_const_prob = replace_arg_for_const_prob
-        self.mutation_probs = mutation_probs
+        self.mutation_strategies = mutation_stategies
         self.restart_steps = restart_steps
         self.warm_start_program = warm_start_program
         self.logger = logger
@@ -149,17 +149,17 @@ class ProgramSearch:
                 f"replace_arg_for_const_prob must be between 0 and 1, got {self.replace_arg_for_const_prob}."
             )
 
-        if abs(sum(self.mutation_probs.values()) - 1.0) > 1e-6:
+        if abs(sum(self.mutation_strategies.values()) - 1.0) > 1e-6:
             raise InvalidProgramSearchArgumentValue(
-                f"Suma wartości w mutation_probs musi wynosić 1.0, ale wynosi {sum(self.mutation_probs.values())}."
+                f"Suma wartości w mutation_probs musi wynosić 1.0, ale wynosi {sum(self.mutation_strategies.values())}."
             )
 
-        if any(value < 0 for value in self.mutation_probs.values()):
+        if any(value < 0 for value in self.mutation_strategies.values()):
             raise InvalidProgramSearchArgumentValue(
-                f"Wszystkie wartości w mutation_probs muszą być >= 0. Aktualne wartości: {self.mutation_probs}."
+                f"Wszystkie wartości w mutation_probs muszą być >= 0. Aktualne wartości: {self.mutation_strategies}."
             )
 
-        if any(value > 1 for value in self.mutation_probs.values()):
+        if any(value > 1 for value in self.mutation_strategies.values()):
             raise InvalidProgramSearchArgumentValue(
-                f"Wszystkie wartości w mutation_probs muszą być <= 1. Aktualne wartości: {self.mutation_probs}."
+                f"Wszystkie wartości w mutation_probs muszą być <= 1. Aktualne wartości: {self.mutation_strategies}."
             )

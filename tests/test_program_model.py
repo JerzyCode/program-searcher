@@ -70,6 +70,22 @@ class TestProgram(unittest.TestCase):
 
         self.assertTrue(self.prog._has_return_statement)
 
+    def test_update_statement_full_updates_func_and_args(self):
+        stmt = Statement(["a", "b"], "add")
+        self.prog.insert_statement(stmt)
+
+        new_args = ["b", "a"]
+        new_func = "multiply"
+        self.prog.update_statement_full(0, new_func, new_args)
+
+        updated_stmt = self.prog._statements[0]
+        self.assertEqual(updated_stmt.func, new_func)
+        self.assertEqual(updated_stmt.args, new_args)
+
+    def test_update_statement_full_empty_program_raises(self):
+        with self.assertRaises(RemoveStatementError):
+            self.prog.update_statement_full(0, "add", ["a", "b"])
+
     def test_remove_statement_success(self):
         stmt = Statement(["a", "b"], "add")
         self.prog.insert_statement(stmt)

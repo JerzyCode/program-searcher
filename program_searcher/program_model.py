@@ -104,6 +104,17 @@ class Program:
         self._statements.remove(stmt_to_remove)
         self._variables.remove(stmt_to_remove._result_var_name)
 
+    def update_statement_full(self, index: int, new_func, new_args):
+        if not self._statements:
+            raise RemoveStatementError(
+                "Program has 0 statements. There is nothing to replace."
+            )
+
+        self._ensure_proper_stmt_index(index)
+        stmt = self._statements[index]
+        stmt.args = new_args
+        stmt.func = new_func
+
     def update_statment_args(self, index: int, new_args: List):
         self._ensure_proper_stmt_index(index)
 
@@ -239,6 +250,9 @@ class Program:
                 f"Invalid index {index}. Expected 0 <= index <= {len(self._statements) - 1} "
                 f"(number of statements: {len(self._statements)})."
             )
+
+    def __len__(self):
+        return len(self._statements)
 
 
 class WarmStartProgram:
