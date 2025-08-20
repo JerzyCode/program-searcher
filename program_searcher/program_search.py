@@ -1,6 +1,7 @@
 import logging
 from collections import deque
-from typing import Callable, Dict, List, Tuple
+
+from typing_extensions import Callable, Dict, List, Tuple
 
 from program_searcher.exceptions import InvalidProgramSearchArgumentValue
 from program_searcher.history_tracker import Step, StepsTracker

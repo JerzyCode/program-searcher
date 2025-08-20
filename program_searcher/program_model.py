@@ -1,6 +1,7 @@
 import copy
 import hashlib
-from typing import Callable, Dict, List
+
+from typing_extensions import Callable, Dict, List
 
 from program_searcher.exceptions import (
     ExecuteProgramError,

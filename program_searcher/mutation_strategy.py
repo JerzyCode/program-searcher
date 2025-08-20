@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import override
+
+from typing_extensions import override
 
 from program_searcher.program_model import Program
 

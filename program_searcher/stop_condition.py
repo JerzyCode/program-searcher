@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import override
+
+from typing_extensions import override
 
 
 class StopCondition(ABC):
