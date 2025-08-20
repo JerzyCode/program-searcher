@@ -16,6 +16,7 @@ class Step:
         self.working_programs_percent = None
         self.overall_best_fitness = None
         self.overall_best_program_code = None
+        self.duration = None
 
     def start(self):
         self.start_time = time.perf_counter()
