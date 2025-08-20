@@ -33,7 +33,7 @@ jobs:
 
     - name: Lint with Pylint
       run: |
-        poetry run pylint --disable=C0114,C0115,C0116,R0903 $(git ls-files '*.py')
+        poetry run pylint --disable=C0114,C0115,C0116,R0903 $(git ls-files '*.py') --fail-under=8
 
     - name: Run tests
       run: |

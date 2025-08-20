@@ -32,7 +32,7 @@ class Statement:
 
         if self.func == self.CONST_KEYWORD:
             return f"{self._result_var_name}={args_str}"
-        elif self.func == self.RETURN_KEYWORD:
+        if self.func == self.RETURN_KEYWORD:
             return f"return {args_str}"
 
         return f"{self._result_var_name}={self.func}({args_str})"
