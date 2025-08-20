@@ -37,7 +37,7 @@ class ProgramSearch:
         pop_size: int = 1000,
         tournament_size: int = 2,
         replace_arg_for_const_prob: float = 0.25,
-        mutation_stategies: Dict[
+        mutation_strategies: Dict[
             MutationStrategy, float
         ] = _DEFAULT_MUTATION_STRATEGIES,
         restart_steps: int = None,
@@ -55,7 +55,7 @@ class ProgramSearch:
         self.pop_size = pop_size
         self.tournament_size = tournament_size
         self.replace_arg_for_const_prob = replace_arg_for_const_prob
-        self.mutation_strategies = mutation_stategies
+        self.mutation_strategies = mutation_strategies
         self.restart_steps = restart_steps
         self.warm_start_program = warm_start_program
         self.logger = logger
