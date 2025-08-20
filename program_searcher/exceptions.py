@@ -12,3 +12,7 @@ class UpdateStatementArgumentsError(Exception):
 
 class ExecuteProgramError(Exception):
     pass
+
+
+class InvalidProgramSearchArgumentValue(Exception):
+    pass

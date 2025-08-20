@@ -5,7 +5,7 @@ from program_searcher.exceptions import (
     RemoveStatementError,
     UpdateStatementArgumentsError,
 )
-from program_searcher.program import Program, Statement
+from program_searcher.program_model import Program, Statement
 
 
 class TestStatement(unittest.TestCase):

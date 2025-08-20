@@ -238,3 +238,9 @@ class Program:
                 f"Invalid index {index}. Expected 0 <= index <= {len(self._statements) - 1} "
                 f"(number of statements: {len(self._statements)})."
             )
+
+
+class WarmStartProgram:
+    def __init__(self, program: Program, fitness: float):
+        self.program = program
+        self.fitness = fitness
