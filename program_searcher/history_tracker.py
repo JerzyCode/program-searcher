@@ -8,6 +8,32 @@ from typing_extensions import override
 
 
 class Step:
+    """
+    Helper class for tracking the execution of a single step and storing associated statistics.
+
+    This class serves as a container for various metrics collected during a step of a process,
+    such as execution duration, best program fitness, best program code, percentage of working programs,
+    and overall best fitness/code. It can be used with a StepsTracker to collect and persist
+    step-by-step statistics.
+
+    Attributes:
+        step (int): The index or number of the current step.
+        start_time (float | None): Timestamp when the step started.
+        end_time (float | None): Timestamp when the step ended.
+        duration (float | None): Duration of the step (end_time - start_time).
+        pop_best_program_fitness (float | None): Best fitness in the current population.
+        pop_best_program_code (str | None): Code of the best program in the current population.
+        working_programs_percent (float | None): Percentage of programs that executed successfully.
+        overall_best_fitness (float | None): Best fitness observed overall (up to this step).
+        overall_best_program_code (str | None): Code of the overall best program.
+
+    Methods:
+        start(): Records the start time of the step.
+        stop(): Records the end time and computes the duration.
+        insert_stats(...): Inserts statistics collected during the step.
+        to_row(): Returns the step data as a list, suitable for logging or tabular storage.
+    """
+
     def __init__(self, step: int):
         self.step = step
         self.start_time = None
@@ -53,13 +79,48 @@ class Step:
 
 
 class StepsTracker(ABC):
+    """
+    Abstract base class for tracking steps of a process.
+
+    Subclasses should implement the `track` method to handle storage, logging,
+    or processing of Step instances.
+    """
+
     @abstractmethod
     def track(self, step: Step):
+        """
+        Track a single Step instance.
+
+        Args:
+            step (Step): The step object containing statistics and timing information.
+        """
         pass
 
 
 class CsvStepsTracker(StepsTracker):
+    """
+    Tracks steps and saves them to a CSV file in batches.
+
+    This tracker collects Step instances and writes them to a CSV file once
+    the number of collected steps reaches `save_batch_size`. The CSV includes
+    step index, duration, population best fitness, working programs percentage,
+    overall best fitness, and program codes.
+
+    Attributes:
+        file_path (str): Path to the CSV file where steps are saved.
+        save_batch_size (int): Number of steps to collect before saving to CSV.
+        steps (List[Step]): Temporary storage of collected Step instances.
+        columns (List[str]): CSV column headers.
+    """
+
     def __init__(self, file_dir, save_batch_size: int):
+        """
+        Initialize a CsvStepsTracker.
+
+        Args:
+            file_dir (str): Directory where the CSV file will be created.
+            save_batch_size (int): Number of steps to accumulate before saving.
+        """
         super().__init__()
         self.save_batch_size = save_batch_size
         self.steps = []
@@ -87,13 +148,19 @@ class CsvStepsTracker(StepsTracker):
 
     @override
     def track(self, step: Step):
+        """
+        Add a Step to the tracker and save to CSV if batch size is reached.
+
+        Args:
+            step (Step): The Step instance to track.
+        """
         self.steps.append(step)
 
         if len(self.steps) >= self.save_batch_size:
-            self.append_to_csv()
+            self._append_to_csv()
             self.steps.clear()
 
-    def append_to_csv(self):
+    def _append_to_csv(self):
         if not self.steps:
             return
 

@@ -41,7 +41,7 @@ class ProgramSearch:
         restart_steps: int = None,
         warm_start_program: WarmStartProgram = None,
         logger: logging.Logger = None,
-        steps_tracker: StepsTracker = None,
+        step_trackers: List[StepsTracker] = None,
     ):
         self.program_name = program_name
         self.program_arg_names = program_arg_names
@@ -57,7 +57,7 @@ class ProgramSearch:
         self.restart_steps = restart_steps
         self.warm_start_program = warm_start_program
         self.logger = logger
-        self.steps_tracker = steps_tracker
+        self.steps_tracker = step_trackers
         self.population: deque[Program] = deque()
         self.fitnesess: Dict[Program, float] = {}
         self.error_programs: Dict[Program, bool] = {}
