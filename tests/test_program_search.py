@@ -2,8 +2,8 @@ import unittest
 
 from program_searcher.exceptions import InvalidProgramSearchArgumentValue
 from program_searcher.mutation_strategy import (
-    InsertStatementMutationStrategy,
     RemoveStatementMutationStrategy,
+    ReplaceStatementMutationStrategy,
     UpdateStatementArgsMutationStrategy,
 )
 from program_searcher.program_search import ProgramSearch
@@ -24,7 +24,7 @@ class TestProgramSearchValidation(unittest.TestCase):
             "replace_arg_for_const_prob": 0.5,
             "mutation_strategies": {
                 RemoveStatementMutationStrategy: 0.3,
-                InsertStatementMutationStrategy: 0.3,
+                ReplaceStatementMutationStrategy: 0.3,
                 UpdateStatementArgsMutationStrategy: 0.4,
             },
         }
@@ -75,7 +75,7 @@ class TestProgramSearchValidation(unittest.TestCase):
     def test_invalid_mutation_strategies_sum(self):
         args = self.correct_args.copy()
         args["mutation_strategies"] = {
-            InsertStatementMutationStrategy: 0.5,
+            ReplaceStatementMutationStrategy: 0.5,
             RemoveStatementMutationStrategy: 0.5,
             UpdateStatementArgsMutationStrategy: 0.5,
         }
@@ -86,7 +86,7 @@ class TestProgramSearchValidation(unittest.TestCase):
         args = self.correct_args.copy()
         args["mutation_strategies"] = {
             RemoveStatementMutationStrategy: -0.1,
-            InsertStatementMutationStrategy: 0.6,
+            ReplaceStatementMutationStrategy: 0.6,
             UpdateStatementArgsMutationStrategy: 0.5,
         }
         with self.assertRaises(InvalidProgramSearchArgumentValue):
@@ -96,7 +96,7 @@ class TestProgramSearchValidation(unittest.TestCase):
         args = self.correct_args.copy()
         args["mutation_strategies"] = {
             RemoveStatementMutationStrategy: 1.1,
-            InsertStatementMutationStrategy: -0.05,
+            ReplaceStatementMutationStrategy: -0.05,
             UpdateStatementArgsMutationStrategy: -0.05,
         }
         with self.assertRaises(InvalidProgramSearchArgumentValue):

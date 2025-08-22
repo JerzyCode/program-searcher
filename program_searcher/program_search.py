@@ -6,9 +6,9 @@ from typing_extensions import Callable, Dict, List, Tuple
 from program_searcher.exceptions import InvalidProgramSearchArgumentValue
 from program_searcher.history_tracker import Step, StepsTracker
 from program_searcher.mutation_strategy import (
-    InsertStatementMutationStrategy,
     MutationStrategy,
     RemoveStatementMutationStrategy,
+    ReplaceStatementMutationStrategy,
     UpdateStatementArgsMutationStrategy,
 )
 from program_searcher.program_model import Program, Statement, WarmStartProgram
@@ -16,7 +16,7 @@ from program_searcher.stop_condition import StopCondition
 
 _DEFAULT_MUTATION_STRATEGIES = {
     UpdateStatementArgsMutationStrategy(): 1 / 3,
-    InsertStatementMutationStrategy(): 1 / 3,
+    ReplaceStatementMutationStrategy(): 1 / 3,
     RemoveStatementMutationStrategy(): 1 / 3,
 }
 
@@ -122,6 +122,9 @@ class ProgramSearch:
         pass
 
     def _on_step_is_done(self, step: Step):
+        pass
+
+    def _init_seeds(self, seed: int):
         pass
 
     def _validate_arguments(self):

@@ -68,7 +68,7 @@ class TestProgram(unittest.TestCase):
         stmt = Statement(["a"], Statement.RETURN_KEYWORD)
         self.prog.insert_statement(stmt)
 
-        self.assertTrue(self.prog._has_return_statement)
+        self.assertTrue(self.prog.has_return_statement)
 
     def test_update_statement_full_updates_func_and_args(self):
         stmt = Statement(["a", "b"], "add")

@@ -69,7 +69,7 @@ class Program:
         self._variables = program_arg_names.copy()
         self._statements: List[Statement] = []
         self.last_variable_index = 1
-        self._has_return_statement = False
+        self.has_return_statement = False
 
     def insert_statement(self, statement: Statement, index: int = -1):
         variable_name = f"x{self.last_variable_index}"
@@ -79,7 +79,7 @@ class Program:
         self._variables.append(variable_name)
 
         if statement.func == Statement.RETURN_KEYWORD:
-            self._has_return_statement = True
+            self.has_return_statement = True
 
         if index == -1:
             self._statements.append(statement)
@@ -161,7 +161,7 @@ class Program:
     def abstract_execution(self, allowed_func: Dict[str, int]):
         defined_vars = set(self.program_arg_names)
 
-        if not self._has_return_statement:
+        if not self.has_return_statement:
             raise ExecuteProgramError(
                 "Program must contain a return statement, but none was found."
             )
@@ -237,7 +237,7 @@ class Program:
         return wrapper
 
     def _add_return_statement_if_not_contained(self):
-        if self._has_return_statement:
+        if self.has_return_statement:
             return
 
         return_vars = self._variables[-self.reutrn_vars_count :]
