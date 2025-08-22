@@ -4,13 +4,12 @@ from collections import deque
 from typing_extensions import Callable, Dict, List, Tuple
 
 from program_searcher.exceptions import InvalidProgramSearchArgumentValue
-from program_searcher.history_tracker import Step, StepsTracker
+from program_searcher.history_tracker import Step
 from program_searcher.mutation_strategy import (
-    MutationStrategy,
     RemoveStatementMutationStrategy,
     UpdateStatementArgsMutationStrategy,
 )
-from program_searcher.program_model import Program, Statement, WarmStartProgram
+from program_searcher.program_model import Program, Statement
 from program_searcher.stop_condition import StopCondition
 
 _DEFAULT_MUTATION_STRATEGIES = {
@@ -25,39 +24,53 @@ class ProgramSearch:
         program_name: str,
         program_arg_names: List[str],
         available_functions: Dict[str, int],
-        min_program_statements: int,
-        max_program_statements: int,
         stop_condition: StopCondition,
-        evaluate_program_func: Callable[
-            [Program],
-            float,
-        ],
-        pop_size: int = 1000,
-        tournament_size: int = 2,
-        replace_arg_for_const_prob: float = 0.25,
-        mutation_strategies: Dict[
-            MutationStrategy, float
-        ] = _DEFAULT_MUTATION_STRATEGIES,
-        restart_steps: int = None,
-        warm_start_program: WarmStartProgram = None,
-        logger: logging.Logger = None,
-        step_trackers: List[StepsTracker] = None,
+        evaluate_program_func: Callable[[Program], float],
+        min_program_statements: int = 1,
+        max_program_statements: int = 10,
+        config: dict = None,
     ):
+        """
+        Initialize ProgramSearch.
+
+        Args:
+            program_name (str): Name of the program.
+            program_arg_names (List[str]): Names of the program arguments.
+            available_functions (Dict[str,int]): Mapping of function name to number of arguments.
+            stop_condition (StopCondition): Stop condition for search.
+            evaluate_program_func (Callable): Function to evaluate a program.
+            min_program_statements (int): Minimum number of statements in programs.
+            max_program_statements (int): Maximum number of statements in programs.
+            config (dict, optional): Dictionary of optional parameters. Possible keys and their defaults:
+                - pop_size (int, default=1000): Population size.
+                - tournament_size (int, default=2): Tournament size for selection.
+                - replace_arg_for_const_prob (float, default=0.25): Probability to replace argument with a constant.
+                - mutation_strategies (Dict[MutationStrategy,float], default=_DEFAULT_MUTATION_STRATEGIES): Mutation strategies with probabilities.
+                - restart_steps (int, default=None): Number of steps after which to restart search.
+                - warm_start_program (WarmStartProgram, default=None): Program to initialize population with.
+                - logger (logging.Logger, default=logging.getLogger(__name__)): Logger for informational and error messages.
+                - step_trackers (List[StepsTracker], default=[]): List of step trackers for recording step statistics.
+        """
         self.program_name = program_name
         self.program_arg_names = program_arg_names
         self.available_functions = available_functions
-        self.min_program_statements = min_program_statements
-        self.max_program_statements = max_program_statements
         self.stop_condition = stop_condition
         self.evaluate_program_func = evaluate_program_func
-        self.pop_size = pop_size
-        self.tournament_size = tournament_size
-        self.replace_arg_for_const_prob = replace_arg_for_const_prob
-        self.mutation_strategies = mutation_strategies
-        self.restart_steps = restart_steps
-        self.warm_start_program = warm_start_program
-        self.logger = logger
-        self.steps_tracker = step_trackers
+        self.min_program_statements = min_program_statements
+        self.max_program_statements = max_program_statements
+
+        config = config or {}
+        self.pop_size = config.get("pop_size", 1000)
+        self.tournament_size = config.get("tournament_size", 2)
+        self.replace_arg_for_const_prob = config.get("replace_arg_for_const_prob", 0.25)
+        self.mutation_strategies = config.get(
+            "mutation_strategies", _DEFAULT_MUTATION_STRATEGIES
+        )
+        self.restart_steps = config.get("restart_steps")
+        self.warm_start_program = config.get("warm_start_program")
+        self.logger = config.get("logger") or logging.getLogger(__name__)
+        self.step_trackers = config.get("step_trackers", [])
+
         self.population: deque[Program] = deque()
         self.fitnesess: Dict[Program, float] = {}
         self.error_programs: Dict[Program, bool] = {}
