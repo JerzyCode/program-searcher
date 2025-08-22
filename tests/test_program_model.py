@@ -62,7 +62,7 @@ class TestProgram(unittest.TestCase):
 
         self.assertEqual(len(self.prog._statements), 1)
         self.assertTrue(stmt._result_var_name.startswith("x"))
-        self.assertIn(stmt._result_var_name, self.prog._variables)
+        self.assertIn(stmt._result_var_name, self.prog.variables)
 
     def test_insert_statement_sets_return_flag(self):
         stmt = Statement(["a"], Statement.RETURN_KEYWORD)

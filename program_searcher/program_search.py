@@ -8,16 +8,14 @@ from program_searcher.history_tracker import Step, StepsTracker
 from program_searcher.mutation_strategy import (
     MutationStrategy,
     RemoveStatementMutationStrategy,
-    ReplaceStatementMutationStrategy,
     UpdateStatementArgsMutationStrategy,
 )
 from program_searcher.program_model import Program, Statement, WarmStartProgram
 from program_searcher.stop_condition import StopCondition
 
 _DEFAULT_MUTATION_STRATEGIES = {
-    UpdateStatementArgsMutationStrategy(): 1 / 3,
-    ReplaceStatementMutationStrategy(): 1 / 3,
-    RemoveStatementMutationStrategy(): 1 / 3,
+    UpdateStatementArgsMutationStrategy(): 1 / 2,
+    RemoveStatementMutationStrategy(): 1 / 2,
 }
 
 

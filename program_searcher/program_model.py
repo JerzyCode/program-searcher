@@ -66,17 +66,21 @@ class Program:
         self.program_arg_names = program_arg_names
         self.reutrn_vars_count = return_vars_count
 
-        self._variables = program_arg_names.copy()
+        self.variables = program_arg_names.copy()
         self._statements: List[Statement] = []
         self.last_variable_index = 1
         self.has_return_statement = False
+
+    def get_statement(self, index: int):
+        self._ensure_proper_stmt_index(index)
+        return self._statements[index]
 
     def insert_statement(self, statement: Statement, index: int = -1):
         variable_name = f"x{self.last_variable_index}"
         self.last_variable_index += 1
 
         statement.set_result_var_name(variable_name)
-        self._variables.append(variable_name)
+        self.variables.append(variable_name)
 
         if statement.func == Statement.RETURN_KEYWORD:
             self.has_return_statement = True
@@ -102,7 +106,7 @@ class Program:
                 )
 
         self._statements.remove(stmt_to_remove)
-        self._variables.remove(stmt_to_remove._result_var_name)
+        self.variables.remove(stmt_to_remove._result_var_name)
 
     def update_statement_full(self, index: int, new_func, new_args):
         if not self._statements:
@@ -222,7 +226,7 @@ class Program:
     def copy(self):
         new_program = Program(self.program_name, self.program_arg_names.copy())
         new_program._statements = [copy.deepcopy(stmt) for stmt in self._statements]
-        new_program._variables = self._variables.copy()
+        new_program.variables = self.variables.copy()
         new_program.last_variable_index = self.last_variable_index
         return new_program
 
@@ -240,7 +244,7 @@ class Program:
         if self.has_return_statement:
             return
 
-        return_vars = self._variables[-self.reutrn_vars_count :]
+        return_vars = self.variables[-self.reutrn_vars_count :]
         return_stmt = Statement("return", return_vars)
         self._statements.append(return_stmt)
 
