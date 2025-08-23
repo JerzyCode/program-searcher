@@ -70,6 +70,8 @@ class Program:
         self._statements: List[Statement] = []
         self.last_variable_index = 1
         self.has_return_statement = False
+        self.execution_error = None
+        self.program_str = None
 
     def get_statement(self, index: int):
         self._ensure_proper_stmt_index(index)
@@ -143,24 +145,67 @@ class Program:
         for stmt in self._statements:
             program_str += f"   {stmt.to_code()}\n"
 
-        return program_str
+        self.program_str = program_str
 
     def execute(
-        self, progrma_args: Dict[str, object] = {}, global_args: Dict[str, object] = {}
+        self, program_args: Dict[str, object] = {}, global_args: Dict[str, object] = {}
     ):
-        if set(progrma_args.keys()) != set(self.program_arg_names):
+        """
+        Executes the compiled program with the given arguments.
+
+        This method runs the program string (`self.program_str`) in the provided
+        global and local contexts, then calls the program's entry function
+        (`self.program_name`) with the required arguments.
+
+        Parameters
+        ----------
+        program_args : Dict[str, object], optional
+            A dictionary of arguments passed to the program function.
+            Keys must exactly match `self.program_arg_names`.
+        global_args : Dict[str, object], optional
+            A dictionary of global variables or functions that should be
+            available during program execution.
+
+        Returns
+        -------
+        object
+            The return value of the executed program's entry function.
+
+        Raises
+        ------
+        ExecuteProgramError
+            If the provided arguments do not match the expected names.
+        Exception
+            Any exception raised during execution of the program will be
+            re-raised after marking `self.has_errors = True`.
+
+        Notes
+        -----
+        - Mutates `self.has_errors` depending on whether execution succeeds.
+        - `program_args` are executed as the local namespace, and `global_args`
+        as the global namespace when evaluating `self.program_str`.
+        """
+        if set(program_args.keys()) != set(self.program_arg_names):
             raise ExecuteProgramError(
                 f"Invalid arguments for program execution. "
                 f"Expected keys: {set(self.program_arg_names)}, "
-                f"but got: {set(progrma_args.keys())}."
+                f"but got: {set(program_args.keys())}."
             )
 
-        exec(self.program_str, global_args, progrma_args)
+        if self.program_str is None:
+            self.generate_code()
 
-        func_args = {k: progrma_args[k] for k in self.program_arg_names}
-        return_value = progrma_args[self.program_name](**func_args)
+        try:
+            exec(self.program_str, global_args, program_args)
 
-        return return_value
+            func_args = {k: program_args[k] for k in self.program_arg_names}
+            return_value = program_args[self.program_name](**func_args)
+            self.execution_error = None
+
+            return return_value
+        except Exception as e:
+            self.execution_error = e
+            raise e
 
     def abstract_execution(self, allowed_func: Dict[str, int]):
         defined_vars = set(self.program_arg_names)
@@ -260,6 +305,6 @@ class Program:
 
 
 class WarmStartProgram:
-    def __init__(self, program: Program, fitness: float):
+    def __init__(self, program: Program, fitness: float = None):
         self.program = program
         self.fitness = fitness

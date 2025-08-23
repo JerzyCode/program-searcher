@@ -124,7 +124,8 @@ class TestProgram(unittest.TestCase):
     def test_generate_code_contains_function_signature(self):
         stmt = Statement(["a", "b"], "add")
         self.prog.insert_statement(stmt)
-        code = self.prog.generate_code()
+        self.prog.generate_code()
+        code = self.prog.program_str
 
         self.assertIn("def test_program(a, b):", code)
         self.assertIn("add", code)

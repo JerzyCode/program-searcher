@@ -8,8 +8,30 @@ from program_searcher.program_model import Program
 
 
 class MutationStrategy(ABC):
+    """
+    Abstract base class for mutation strategies.
+
+    Each implementation should modify the given `Program` object **in-place**
+    rather than returning a new object. This ensures that mutation is applied
+    directly without requiring extra copying or reassignment logic.
+    """
+
     @abstractmethod
     def mutate(self, program: Program):
+        """
+        Mutates the given program in-place.
+
+        Parameters
+        ----------
+        program : Program
+            The program object to be mutated.
+
+        Returns
+        -------
+        None
+            The mutation is applied directly to `program`; no new object
+            should be returned.
+        """
         raise NotImplementedError
 
 
