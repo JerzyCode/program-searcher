@@ -1,62 +1,10 @@
 import random
 from abc import ABC, abstractmethod
-from collections import deque
 
-from typing_extensions import Dict, override
+from typing_extensions import Dict, List, override
 
 from program_searcher.exceptions import RemoveStatementError
-from program_searcher.program_model import Program
-
-
-class EvolutionOperator(ABC):
-    @abstractmethod
-    def apply(
-        self,
-        population: deque[Program],
-        fitnesses: Dict[Program, float],
-        mutation_strategies: Dict["MutationStrategy", float],
-    ):
-        """
-        Applies an evolution step to the population.
-
-        Parameters
-        ----------
-        population : deque[Program]
-            Current population of programs.
-        fitnesses : Dict[Program, float]
-            Mapping from program to its fitness.
-        mutation_strategies : Dict[MutationStrategy, float]
-            Per-program mutation strategies with associated probabilities.
-
-        """
-        raise NotImplementedError
-
-
-class TournamentSelectionOperator(EvolutionOperator, ABC):
-    def __init__(self, tournament_size: int):
-        self.tournament_size = tournament_size
-
-    @override
-    def apply(
-        self,
-        population: deque[Program],
-        fitnesses: Dict[Program, float],
-        mutation_strategies: Dict["MutationStrategy", float],
-    ):
-        tournament_programs = random.choices(population, k=self.tournament_size)
-        best_program = max(tournament_programs, key=lambda prog: fitnesses[prog])
-        tournament_winner = best_program.copy()
-
-        program = population.popleft()
-        fitnesses.pop(program)
-
-        strategies = list(mutation_strategies.keys())
-        weights = list(mutation_strategies.values())
-
-        chosen_strategy = random.choices(strategies, weights=weights, k=1)[0]
-        chosen_strategy.mutate(tournament_winner)
-
-        population.append(tournament_winner)
+from program_searcher.program_model import Program, Statement
 
 
 class MutationStrategy(ABC):
@@ -122,7 +70,7 @@ class RemoveStatementMutationStrategy(MutationStrategy, ABC):
             try:
                 statement_to_remove_idx = random.randrange(max_index)
                 program.remove_statement(statement_to_remove_idx)
-                break
+                return
             except RemoveStatementError:
                 pass
 
@@ -201,15 +149,39 @@ class UpdateStatementArgsMutationStrategy(MutationStrategy, ABC):
         statement.args = new_args
 
 
-class InsertStatement(MutationStrategy, ABC):
+class InsertStatementMutationStrategy(MutationStrategy, ABC):
+    """
+    Mutation strategy that inserts a random statement into a program.
+
+    The statement is inserted at a random position before the return statement
+    (if present) to ensure the program remains valid. The new statement is
+    generated based on the allowed functions and their argument counts.
+
+    Attributes
+    ----------
+    available_functions : Dict[str, int]
+        A mapping of function names to the number of arguments they require.
+    """
+
+    def __init__(self, available_functions: Dict[str, int]):
+        self.available_functions = available_functions
+
     @override
     def mutate(self, program: Program):
         if len(program) == 0:
             return
 
-        statement_idx = random.randrange(len(program))
-        statement = program.get_statement(statement_idx)
-        statement_args_count = len(statement.args)
+        max_index = len(program) - (1 if program.has_return_statement() else 0)
+        if max_index <= 0:
+            return
 
-        new_args = random.choices(program.variables, k=statement_args_count)
-        statement.args = new_args
+        insert_index = random.randrange(max_index)
+
+        statement = self._generate_random_statement(program.variables)
+        program.insert_statement(statement, insert_index)
+
+    def _generate_random_statement(self, program_vars: List[str]) -> Statement:
+        func_name = random.choice(list(self.available_functions.keys()))
+        allowed_args_size = self.available_functions[func_name]
+        args = random.choices(program_vars, k=allowed_args_size)
+        return Statement(func=func_name, args=args)

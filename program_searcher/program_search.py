@@ -4,13 +4,15 @@ from collections import deque
 
 from typing_extensions import Callable, Dict, List, Tuple
 
+from program_searcher.evolution_operator import (
+    EvolutionOperator,
+    TournamentSelectionOperator,
+)
 from program_searcher.exceptions import InvalidProgramSearchArgumentValue
 from program_searcher.history_tracker import Step, StepsTracker
 from program_searcher.mutation_strategy import (
-    EvolutionOperator,
     MutationStrategy,
     RemoveStatementMutationStrategy,
-    TournamentSelectionOperator,
     UpdateStatementArgsMutationStrategy,
 )
 from program_searcher.program_model import Program, Statement, WarmStartProgram
@@ -235,7 +237,7 @@ class ProgramSearch:
 
         return program
 
-    def _generate_random_statement(self, program_vars: str) -> Statement:
+    def _generate_random_statement(self, program_vars: List[str]) -> Statement:
         func_name = random.choice(list(self.available_functions.keys()))
         allowed_args_size = self.available_functions[func_name]
         args = random.choices(program_vars, k=allowed_args_size)

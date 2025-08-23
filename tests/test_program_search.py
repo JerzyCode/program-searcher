@@ -5,12 +5,13 @@ import sys
 import tempfile
 import unittest
 
+from program_searcher.evolution_operator import FullPopulationMutationOperator
 from program_searcher.exceptions import InvalidProgramSearchArgumentValue
 from program_searcher.history_tracker import CsvStepsTracker
 from program_searcher.mutation_strategy import (
+    InsertStatementMutationStrategy,
     RemoveStatementMutationStrategy,
     ReplaceStatementMutationStrategy,
-    TournamentSelectionOperator,
     UpdateStatementArgsMutationStrategy,
 )
 from program_searcher.program_model import Program, Statement, WarmStartProgram
@@ -105,7 +106,7 @@ class TestProgramSearchValidation(unittest.TestCase):
             evaluate_program_func=eval_func,
             min_program_statements=1,
             max_program_statements=5,
-            config={"pop_size": 100, "restart_steps": 10, "logger": logger},
+            config={"pop_size": 50, "restart_steps": 10, "logger": logger},
         )
 
         result_pr, result_fitness = program_search.search()
@@ -138,21 +139,21 @@ class TestProgramSearchValidation(unittest.TestCase):
                 Statement(["a", "b"], func="op.multiply")
             )
             warm_start = WarmStartProgram(warm_start_program)
-
-            mutation_strategies = {
-                UpdateStatementArgsMutationStrategy(): 1 / 4,
-                RemoveStatementMutationStrategy(): 1 / 4,
-                ReplaceStatementMutationStrategy(
-                    available_functions={
-                        "op.add": 2,
-                        "op.substract": 2,
-                        "const": 1,
-                        "op.multipy": 2,
-                    }
-                ): 1 / 2,
+            available_functions_local = {
+                "op.add": 2,
+                "op.substract": 2,
+                "const": 1,
+                "op.multiply": 2,
             }
 
-            evolution_operator = TournamentSelectionOperator(tournament_size=20)
+            mutation_strategies = {
+                InsertStatementMutationStrategy(available_functions_local): 1 / 5,
+                UpdateStatementArgsMutationStrategy(): 1 / 5,
+                RemoveStatementMutationStrategy(): 1 / 5,
+                ReplaceStatementMutationStrategy(available_functions_local): 2 / 5,
+            }
+
+            evolution_operator = FullPopulationMutationOperator()
 
             program_search = ProgramSearch(
                 program_name="test",
@@ -164,7 +165,7 @@ class TestProgramSearchValidation(unittest.TestCase):
                 min_program_statements=1,
                 max_program_statements=5,
                 config={
-                    "pop_size": 100,
+                    "pop_size": 50,
                     "restart_steps": 15,
                     "logger": logger,
                     "mutation_strategies": mutation_strategies,
@@ -173,7 +174,6 @@ class TestProgramSearchValidation(unittest.TestCase):
                         CsvStepsTracker(file_dir=csv_dir, save_batch_size=5)
                     ],
                     "evolution_operator": evolution_operator,
-                    "seed": 42,
                 },
             )
 
