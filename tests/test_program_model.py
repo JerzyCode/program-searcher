@@ -62,13 +62,29 @@ class TestProgram(unittest.TestCase):
 
         self.assertEqual(len(self.prog._statements), 1)
         self.assertTrue(stmt._result_var_name.startswith("x"))
-        self.assertIn(stmt._result_var_name, self.prog._variables)
+        self.assertIn(stmt._result_var_name, self.prog.variables)
 
     def test_insert_statement_sets_return_flag(self):
         stmt = Statement(["a"], Statement.RETURN_KEYWORD)
         self.prog.insert_statement(stmt)
 
-        self.assertTrue(self.prog._has_return_statement)
+        self.assertTrue(self.prog.has_return_statement())
+
+    def test_update_statement_full_updates_func_and_args(self):
+        stmt = Statement(["a", "b"], "add")
+        self.prog.insert_statement(stmt)
+
+        new_args = ["b", "a"]
+        new_func = "multiply"
+        self.prog.update_statement_full(0, new_func, new_args)
+
+        updated_stmt = self.prog._statements[0]
+        self.assertEqual(updated_stmt.func, new_func)
+        self.assertEqual(updated_stmt.args, new_args)
+
+    def test_update_statement_full_empty_program_raises(self):
+        with self.assertRaises(RemoveStatementError):
+            self.prog.update_statement_full(0, "add", ["a", "b"])
 
     def test_remove_statement_success(self):
         stmt = Statement(["a", "b"], "add")
@@ -108,7 +124,8 @@ class TestProgram(unittest.TestCase):
     def test_generate_code_contains_function_signature(self):
         stmt = Statement(["a", "b"], "add")
         self.prog.insert_statement(stmt)
-        code = self.prog.generate_code()
+        self.prog.generate_code()
+        code = self.prog.program_str
 
         self.assertIn("def test_program(a, b):", code)
         self.assertIn("add", code)
@@ -121,14 +138,6 @@ class TestProgram(unittest.TestCase):
 
         allowed = {"add": 2, "return": 1}
         self.prog.abstract_execution(allowed)  # should not raise
-
-    def test_abstract_execution_missing_return(self):
-        stmt = Statement(["a", "b"], "add")
-        self.prog.insert_statement(stmt)
-
-        allowed = {"add": 2}
-        with self.assertRaises(ExecuteProgramError):
-            self.prog.abstract_execution(allowed)
 
     def test_abstract_execution_undefined_variable(self):
         stmt = Statement(["z"], "neg")

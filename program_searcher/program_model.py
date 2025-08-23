@@ -1,6 +1,7 @@
 import copy
 import hashlib
-from typing import Callable, Dict, List
+
+from typing_extensions import Callable, Dict, List
 
 from program_searcher.exceptions import (
     ExecuteProgramError,
@@ -63,22 +64,24 @@ class Program:
     ):
         self.program_name = program_name
         self.program_arg_names = program_arg_names
-        self.reutrn_vars_count = return_vars_count
+        self.return_vars_count = return_vars_count
 
-        self._variables = program_arg_names.copy()
+        self.variables = program_arg_names.copy()
         self._statements: List[Statement] = []
         self.last_variable_index = 1
-        self._has_return_statement = False
+        self.execution_error = None
+        self.program_str = None
+
+    def get_statement(self, index: int):
+        self._ensure_proper_stmt_index(index)
+        return self._statements[index]
 
     def insert_statement(self, statement: Statement, index: int = -1):
         variable_name = f"x{self.last_variable_index}"
         self.last_variable_index += 1
 
         statement.set_result_var_name(variable_name)
-        self._variables.append(variable_name)
-
-        if statement.func == Statement.RETURN_KEYWORD:
-            self._has_return_statement = True
+        self.variables.append(variable_name)
 
         if index == -1:
             self._statements.append(statement)
@@ -101,7 +104,20 @@ class Program:
                 )
 
         self._statements.remove(stmt_to_remove)
-        self._variables.remove(stmt_to_remove._result_var_name)
+
+        if stmt_to_remove._result_var_name is not None:
+            self.variables.remove(stmt_to_remove._result_var_name)
+
+    def update_statement_full(self, index: int, new_func, new_args):
+        if not self._statements:
+            raise RemoveStatementError(
+                "Program has 0 statements. There is nothing to replace."
+            )
+
+        self._ensure_proper_stmt_index(index)
+        stmt = self._statements[index]
+        stmt.args = new_args
+        stmt.func = new_func
 
     def update_statment_args(self, index: int, new_args: List):
         self._ensure_proper_stmt_index(index)
@@ -127,29 +143,76 @@ class Program:
         for stmt in self._statements:
             program_str += f"   {stmt.to_code()}\n"
 
-        return program_str
+        self.program_str = program_str
 
     def execute(
-        self, progrma_args: Dict[str, object] = {}, global_args: Dict[str, object] = {}
+        self, program_args: Dict[str, object] = {}, global_args: Dict[str, object] = {}
     ):
-        if set(progrma_args.keys()) != set(self.program_arg_names):
+        """
+        Executes the compiled program with the given arguments.
+
+        This method runs the program string (`self.program_str`) in the provided
+        global and local contexts, then calls the program's entry function
+        (`self.program_name`) with the required arguments.
+
+        Parameters
+        ----------
+        program_args : Dict[str, object], optional
+            A dictionary of arguments passed to the program function.
+            Keys must exactly match `self.program_arg_names`.
+        global_args : Dict[str, object], optional
+            A dictionary of global variables or functions that should be
+            available during program execution.
+
+        Returns
+        -------
+        object
+            The return value of the executed program's entry function.
+
+        Raises
+        ------
+        ExecuteProgramError
+            If the provided arguments do not match the expected names.
+        Exception
+            Any exception raised during execution of the program will be
+            re-raised after marking `self.has_errors = True`.
+
+        Notes
+        -----
+        - Mutates `self.has_errors` depending on whether execution succeeds.
+        - `program_args` are executed as the local namespace, and `global_args`
+        as the global namespace when evaluating `self.program_str`.
+        """
+        if set(program_args.keys()) != set(self.program_arg_names):
             raise ExecuteProgramError(
                 f"Invalid arguments for program execution. "
                 f"Expected keys: {set(self.program_arg_names)}, "
-                f"but got: {set(progrma_args.keys())}."
+                f"but got: {set(program_args.keys())}."
             )
 
-        exec(self.program_str, global_args, progrma_args)
+        if self.program_str is None:
+            self.generate_code()
 
-        func_args = {k: progrma_args[k] for k in self.program_arg_names}
-        return_value = progrma_args[self.program_name](**func_args)
+        try:
+            exec(self.program_str, global_args, program_args)
 
-        return return_value
+            func_args = {k: program_args[k] for k in self.program_arg_names}
+            return_value = program_args[self.program_name](**func_args)
+            self.execution_error = None
+
+            return return_value
+        except Exception as e:
+            self.execution_error = e
+            raise e
 
     def abstract_execution(self, allowed_func: Dict[str, int]):
+        self._add_return_statement_if_not_contained()
+        allowed_func = allowed_func.copy()
+        allowed_func[Statement.RETURN_KEYWORD] = self.return_vars_count
+
         defined_vars = set(self.program_arg_names)
 
-        if not self._has_return_statement:
+        if not self.has_return_statement():
             raise ExecuteProgramError(
                 "Program must contain a return statement, but none was found."
             )
@@ -210,7 +273,7 @@ class Program:
     def copy(self):
         new_program = Program(self.program_name, self.program_arg_names.copy())
         new_program._statements = [copy.deepcopy(stmt) for stmt in self._statements]
-        new_program._variables = self._variables.copy()
+        new_program.variables = self.variables.copy()
         new_program.last_variable_index = self.last_variable_index
         return new_program
 
@@ -225,11 +288,11 @@ class Program:
         return wrapper
 
     def _add_return_statement_if_not_contained(self):
-        if self._has_return_statement:
+        if self.has_return_statement():
             return
 
-        return_vars = self._variables[-self.reutrn_vars_count :]
-        return_stmt = Statement("return", return_vars)
+        return_vars = self.variables[-self.return_vars_count :]
+        return_stmt = Statement(func="return", args=return_vars)
         self._statements.append(return_stmt)
 
     def _ensure_proper_stmt_index(self, index: int):
@@ -239,8 +302,14 @@ class Program:
                 f"(number of statements: {len(self._statements)})."
             )
 
+    def has_return_statement(self):
+        return any(stmt.func == Statement.RETURN_KEYWORD for stmt in self._statements)
+
+    def __len__(self):
+        return len(self._statements)
+
 
 class WarmStartProgram:
-    def __init__(self, program: Program, fitness: float):
+    def __init__(self, program: Program, fitness: float = None):
         self.program = program
         self.fitness = fitness
