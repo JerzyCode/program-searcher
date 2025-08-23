@@ -93,6 +93,37 @@ class ProgramSearch:
         self._init_seeds()
 
     def search(self) -> Tuple[Program, float]:
+        """
+        Executes the program search using a genetic programming approach.
+
+        This method runs the main search loop until the stop condition is met.
+        At each step, it performs the following operations in order:
+
+            1. Initializes the population if not already done.
+            2. Evaluates the fitness of all programs in the population.
+            3. Performs tournament selection to choose a candidate program.
+            4. Mutates the tournament winner program according to mutation strategies.
+            5. Updates the population with the new mutated program.
+            6. Replaces programs that caused errors during execution.
+            7. Replaces equivalent programs to maintain diversity.
+
+        Each step is tracked by a Step object, and any registered step trackers
+        are notified via `_on_step_is_done`.
+
+        Returns
+        -------
+        Tuple[Program, float]
+            A tuple containing:
+                - The best program found during the search.
+                - Its corresponding fitness value.
+
+        Notes
+        -----
+        - The search process mutates programs in-place and updates internal
+        state including `self.best_program` and `self.best_program_fitness`.
+        - The search loop increments a step counter at each iteration, used for
+        tracking progress and logging.
+        """
         steps_counter = 1
         self._initialize_population()
 
