@@ -68,7 +68,7 @@ class TestProgram(unittest.TestCase):
         stmt = Statement(["a"], Statement.RETURN_KEYWORD)
         self.prog.insert_statement(stmt)
 
-        self.assertTrue(self.prog.has_return_statement)
+        self.assertTrue(self.prog.has_return_statement())
 
     def test_update_statement_full_updates_func_and_args(self):
         stmt = Statement(["a", "b"], "add")
@@ -138,14 +138,6 @@ class TestProgram(unittest.TestCase):
 
         allowed = {"add": 2, "return": 1}
         self.prog.abstract_execution(allowed)  # should not raise
-
-    def test_abstract_execution_missing_return(self):
-        stmt = Statement(["a", "b"], "add")
-        self.prog.insert_statement(stmt)
-
-        allowed = {"add": 2}
-        with self.assertRaises(ExecuteProgramError):
-            self.prog.abstract_execution(allowed)
 
     def test_abstract_execution_undefined_variable(self):
         stmt = Statement(["z"], "neg")

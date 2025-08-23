@@ -64,12 +64,11 @@ class Program:
     ):
         self.program_name = program_name
         self.program_arg_names = program_arg_names
-        self.reutrn_vars_count = return_vars_count
+        self.return_vars_count = return_vars_count
 
         self.variables = program_arg_names.copy()
         self._statements: List[Statement] = []
         self.last_variable_index = 1
-        self.has_return_statement = False
         self.execution_error = None
         self.program_str = None
 
@@ -83,9 +82,6 @@ class Program:
 
         statement.set_result_var_name(variable_name)
         self.variables.append(variable_name)
-
-        if statement.func == Statement.RETURN_KEYWORD:
-            self.has_return_statement = True
 
         if index == -1:
             self._statements.append(statement)
@@ -108,7 +104,9 @@ class Program:
                 )
 
         self._statements.remove(stmt_to_remove)
-        self.variables.remove(stmt_to_remove._result_var_name)
+
+        if stmt_to_remove._result_var_name is not None:
+            self.variables.remove(stmt_to_remove._result_var_name)
 
     def update_statement_full(self, index: int, new_func, new_args):
         if not self._statements:
@@ -208,9 +206,13 @@ class Program:
             raise e
 
     def abstract_execution(self, allowed_func: Dict[str, int]):
+        self._add_return_statement_if_not_contained()
+        allowed_func = allowed_func.copy()
+        allowed_func[Statement.RETURN_KEYWORD] = self.return_vars_count
+
         defined_vars = set(self.program_arg_names)
 
-        if not self.has_return_statement:
+        if not self.has_return_statement():
             raise ExecuteProgramError(
                 "Program must contain a return statement, but none was found."
             )
@@ -286,11 +288,11 @@ class Program:
         return wrapper
 
     def _add_return_statement_if_not_contained(self):
-        if self.has_return_statement:
+        if self.has_return_statement():
             return
 
-        return_vars = self.variables[-self.reutrn_vars_count :]
-        return_stmt = Statement("return", return_vars)
+        return_vars = self.variables[-self.return_vars_count :]
+        return_stmt = Statement(func="return", args=return_vars)
         self._statements.append(return_stmt)
 
     def _ensure_proper_stmt_index(self, index: int):
@@ -299,6 +301,9 @@ class Program:
                 f"Invalid index {index}. Expected 0 <= index <= {len(self._statements) - 1} "
                 f"(number of statements: {len(self._statements)})."
             )
+
+    def has_return_statement(self):
+        return any(stmt.func == Statement.RETURN_KEYWORD for stmt in self._statements)
 
     def __len__(self):
         return len(self._statements)

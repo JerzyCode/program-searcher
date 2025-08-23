@@ -42,7 +42,6 @@ class TestRemoveStatementMutationStrategy(unittest.TestCase):
 
     def test_does_not_remove_return_statement(self):
         prog = make_program_with_return()
-        prog.has_return_statement = True
         strat = RemoveStatementMutationStrategy(remove_retries=3)
 
         strat.mutate(prog)

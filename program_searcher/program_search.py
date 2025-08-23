@@ -4,10 +4,7 @@ from collections import deque
 
 from typing_extensions import Callable, Dict, List, Tuple
 
-from program_searcher.exceptions import (
-    ExecuteProgramError,
-    InvalidProgramSearchArgumentValue,
-)
+from program_searcher.exceptions import InvalidProgramSearchArgumentValue
 from program_searcher.history_tracker import Step, StepsTracker
 from program_searcher.mutation_strategy import (
     MutationStrategy,
@@ -128,7 +125,7 @@ class ProgramSearch:
         self._initialize_population()
 
         while not self.stop_condition.is_met():
-            step = Step(step=self.step)
+            step = Step(step=steps_counter)
             step.start()
 
             self._evaluate_population()
@@ -138,11 +135,16 @@ class ProgramSearch:
             self._replace_error_programs()
             self._replace_equivalent_programs()
 
+            if self.restart_steps and steps_counter % self.restart_steps == 0:
+                self._restart()
+
             self.stop_condition.step()
             step.stop()
 
             self._on_step_is_done(step)
             steps_counter += 1
+
+        return self.best_program, self.best_program_fitness
 
     def _initialize_population(self):
         for _ in range(self.pop_size):
@@ -200,23 +202,19 @@ class ProgramSearch:
     def _replace_error_programs(self):
         for index, program in enumerate(self.population):
             if program.execution_error is not None:
-                self.logger.info(
+                self.logger.debug(
                     f"Replacing program at index {index} failed execution: {program.execution_error}"
                 )
                 self.population[index] = self._get_program_replacement()
                 continue
 
-            try:
-                program.abstract_execution(self.available_functions)
-            except ExecuteProgramError as e:
-                self.logger.info(
-                    f"Replacing program at index {index} after abstract execution failed: {e}"
-                )
-                self.population[index] = self._get_program_replacement()
-
     def _replace_equivalent_programs(self):
         seen_program_hashes = set()
-        warm_start_progrma_hash = self.warm_start_program.program.to_hash()
+        replaced_count = 0
+
+        if self.warm_start_program is not None:
+            warm_start_progrma_hash = self.warm_start_program.program.to_hash()
+
         for index, program in enumerate(self.population):
             program_hash = program.to_hash()
             is_warm_start = (
@@ -228,11 +226,11 @@ class ProgramSearch:
                     f"Replacing program at index {index}. It is equivalent to other one."
                 )
                 self.population[index] = self._get_program_replacement()
+                replaced_count += 1
             else:
                 seen_program_hashes.add(program_hash)
 
-        replace_count = len(self.population) - len(seen_program_hashes)
-        self.logger.info(f"Replaced {replace_count} equivalent programs")
+        self.logger.debug(f"Replaced {replaced_count} equivalent programs")
 
     def _get_program_replacement(self):
         if self.warm_start_program is not None:
@@ -241,7 +239,9 @@ class ProgramSearch:
         return self._generate_random_program()
 
     def _generate_random_program(self):
-        num_statements = random.randint(self.min_statements, self.max_statements)
+        num_statements = random.randint(
+            self.min_program_statements, self.max_program_statements
+        )
         program = Program(
             self.program_name,
             self.program_arg_names,
@@ -258,7 +258,7 @@ class ProgramSearch:
         func_name = random.choice(list(self.available_functions.keys()))
         allowed_args_size = self.available_functions[func_name]
         args = random.choices(program_vars, k=allowed_args_size)
-        return Statement(func_name, args)
+        return Statement(func=func_name, args=args)
 
     def _on_step_is_done(self, step: Step):
         pop_best_program, pop_best_fitness = max(
@@ -269,7 +269,9 @@ class ProgramSearch:
             self.best_program = pop_best_program
             self.best_program_fitness = pop_best_fitness
 
-        num_error_programs = sum(pr.has_errors for pr in self.population)
+        num_error_programs = sum(
+            pr.execution_error is not None for pr in self.population
+        )
         working_programs_percent = 1 - num_error_programs / self.pop_size
 
         step.insert_stats(
@@ -284,10 +286,15 @@ class ProgramSearch:
             step_tracker.track(step)
 
         self.logger.info(
-            f"Step: {step.step} | Time: {step.duration} |"
+            f"  Step: {step.step} | Time: {step.duration:.2f}s |  "
             f"Population best program fitness: {pop_best_fitness:.4f} | "
             f"Overall best fitness: {self.best_program_fitness:.4f}"
         )
+
+    def _restart(self):
+        self.population.clear()
+        self.logger.debug("Population restart")
+        self._initialize_population()
 
     def _init_seeds(self):
         if self.seed is not None:

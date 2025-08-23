@@ -61,7 +61,7 @@ class RemoveStatementMutationStrategy(MutationStrategy, ABC):
 
     @override
     def mutate(self, program: Program):
-        max_index = len(program) - (1 if program.has_return_statement else 0)
+        max_index = len(program) - (1 if program.has_return_statement() else 0)
 
         if max_index <= 0:
             return
@@ -111,7 +111,7 @@ class ReplaceStatementMutationStrategy(MutationStrategy, ABC):
 
         args = random.choices(program.variables, k=args_size)
 
-        max_index = len(program) - (1 if program.has_return_statement else 0)
+        max_index = len(program) - (1 if program.has_return_statement() else 0)
         if max_index <= 0:
             return
 
