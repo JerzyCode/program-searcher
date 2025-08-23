@@ -10,6 +10,7 @@ from program_searcher.history_tracker import CsvStepsTracker
 from program_searcher.mutation_strategy import (
     RemoveStatementMutationStrategy,
     ReplaceStatementMutationStrategy,
+    TournamentSelectionOperator,
     UpdateStatementArgsMutationStrategy,
 )
 from program_searcher.program_model import Program, Statement, WarmStartProgram
@@ -30,7 +31,6 @@ class TestProgramSearchValidation(unittest.TestCase):
             "evaluate_program_func": lambda p: 0.0,
             "config": {
                 "pop_size": 10,
-                "tournament_size": 2,
                 "mutation_strategies": {
                     RemoveStatementMutationStrategy: 0.3,
                     ReplaceStatementMutationStrategy: 0.3,
@@ -50,19 +50,6 @@ class TestProgramSearchValidation(unittest.TestCase):
     def test_negative_pop_size(self):
         args = self.correct_args.copy()
         args["config"]["pop_size"] = -1
-        with self.assertRaises(InvalidProgramSearchArgumentValue):
-            ProgramSearch(**args)
-
-    def test_negative_tournament_size(self):
-        args = self.correct_args.copy()
-        args["config"]["tournament_size"] = -1
-        with self.assertRaises(InvalidProgramSearchArgumentValue):
-            ProgramSearch(**args)
-
-    def test_tournament_larger_than_pop(self):
-        args = self.correct_args.copy()
-        args["config"]["tournament_size"] = 20
-        args["config"]["pop_size"] = 10
         with self.assertRaises(InvalidProgramSearchArgumentValue):
             ProgramSearch(**args)
 
@@ -165,6 +152,8 @@ class TestProgramSearchValidation(unittest.TestCase):
                 ): 1 / 2,
             }
 
+            evolution_operator = TournamentSelectionOperator(tournament_size=20)
+
             program_search = ProgramSearch(
                 program_name="test",
                 program_arg_names=["a", "b"],
@@ -178,12 +167,12 @@ class TestProgramSearchValidation(unittest.TestCase):
                     "pop_size": 100,
                     "restart_steps": 15,
                     "logger": logger,
-                    "tournament_size": 20,
                     "mutation_strategies": mutation_strategies,
                     "warm_start_program": warm_start,
                     "step_trackers": [
                         CsvStepsTracker(file_dir=csv_dir, save_batch_size=5)
                     ],
+                    "evolution_operator": evolution_operator,
                     "seed": 42,
                 },
             )

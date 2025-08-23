@@ -1,10 +1,62 @@
 import random
 from abc import ABC, abstractmethod
+from collections import deque
 
 from typing_extensions import Dict, override
 
 from program_searcher.exceptions import RemoveStatementError
 from program_searcher.program_model import Program
+
+
+class EvolutionOperator(ABC):
+    @abstractmethod
+    def apply(
+        self,
+        population: deque[Program],
+        fitnesses: Dict[Program, float],
+        mutation_strategies: Dict["MutationStrategy", float],
+    ):
+        """
+        Applies an evolution step to the population.
+
+        Parameters
+        ----------
+        population : deque[Program]
+            Current population of programs.
+        fitnesses : Dict[Program, float]
+            Mapping from program to its fitness.
+        mutation_strategies : Dict[MutationStrategy, float]
+            Per-program mutation strategies with associated probabilities.
+
+        """
+        raise NotImplementedError
+
+
+class TournamentSelectionOperator(EvolutionOperator, ABC):
+    def __init__(self, tournament_size: int):
+        self.tournament_size = tournament_size
+
+    @override
+    def apply(
+        self,
+        population: deque[Program],
+        fitnesses: Dict[Program, float],
+        mutation_strategies: Dict["MutationStrategy", float],
+    ):
+        tournament_programs = random.choices(population, k=self.tournament_size)
+        best_program = max(tournament_programs, key=lambda prog: fitnesses[prog])
+        tournament_winner = best_program.copy()
+
+        program = population.popleft()
+        fitnesses.pop(program)
+
+        strategies = list(mutation_strategies.keys())
+        weights = list(mutation_strategies.values())
+
+        chosen_strategy = random.choices(strategies, weights=weights, k=1)[0]
+        chosen_strategy.mutate(tournament_winner)
+
+        population.append(tournament_winner)
 
 
 class MutationStrategy(ABC):
@@ -136,6 +188,20 @@ class UpdateStatementArgsMutationStrategy(MutationStrategy, ABC):
             is empty, no mutation is performed.
     """
 
+    @override
+    def mutate(self, program: Program):
+        if len(program) == 0:
+            return
+
+        statement_idx = random.randrange(len(program))
+        statement = program.get_statement(statement_idx)
+        statement_args_count = len(statement.args)
+
+        new_args = random.choices(program.variables, k=statement_args_count)
+        statement.args = new_args
+
+
+class InsertStatement(MutationStrategy, ABC):
     @override
     def mutate(self, program: Program):
         if len(program) == 0:
