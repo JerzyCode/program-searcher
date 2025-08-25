@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "program-searcher"
-version = "0.1.0"
+version = "0.1.0-dev0" 
 description = ""
 authors = ["jerzyb <devjerzy@gmail.com>"]
 readme = "README.md"
