@@ -61,8 +61,8 @@ class TestProgram(unittest.TestCase):
         self.prog.insert_statement(stmt)
 
         self.assertEqual(len(self.prog._statements), 1)
-        self.assertTrue(stmt._result_var_name.startswith("x"))
-        self.assertIn(stmt._result_var_name, self.prog.variables)
+        self.assertTrue(stmt.result_var_name.startswith("x"))
+        self.assertIn(stmt.result_var_name, self.prog.variables)
 
     def test_insert_statement_sets_return_flag(self):
         stmt = Statement(["a"], Statement.RETURN_KEYWORD)
@@ -101,7 +101,7 @@ class TestProgram(unittest.TestCase):
     def test_remove_statement_referenced_variable(self):
         stmt1 = Statement(["a", "b"], "add")
         self.prog.insert_statement(stmt1)
-        stmt2 = Statement([stmt1._result_var_name], "neg")
+        stmt2 = Statement([stmt1.result_var_name], "neg")
         self.prog.insert_statement(stmt2)
 
         with self.assertRaises(RemoveStatementError):
@@ -133,7 +133,7 @@ class TestProgram(unittest.TestCase):
     def test_abstract_execution_valid(self):
         stmt = Statement(["a", "b"], "add")
         self.prog.insert_statement(stmt)
-        stmt2 = Statement([stmt._result_var_name], "return")
+        stmt2 = Statement([stmt.result_var_name], "return")
         self.prog.insert_statement(stmt2)
 
         allowed = {"add": 2, "return": 1}
@@ -142,7 +142,7 @@ class TestProgram(unittest.TestCase):
     def test_abstract_execution_undefined_variable(self):
         stmt = Statement(["z"], "neg")
         self.prog.insert_statement(stmt)
-        stmt2 = Statement([stmt._result_var_name], "return")
+        stmt2 = Statement([stmt.result_var_name], "return")
         self.prog.insert_statement(stmt2)
 
         allowed = {"neg": 1, "return": 1}
@@ -152,7 +152,7 @@ class TestProgram(unittest.TestCase):
     def test_abstract_execution_wrong_arg_count(self):
         stmt = Statement(["a", "b"], "neg")
         self.prog.insert_statement(stmt)
-        stmt2 = Statement([stmt._result_var_name], "return")
+        stmt2 = Statement([stmt.result_var_name], "return")
         self.prog.insert_statement(stmt2)
 
         allowed = {"neg": 1, "return": 1}
@@ -163,13 +163,13 @@ class TestProgram(unittest.TestCase):
         prog1 = Program("prog1", ["a"])
         stmt1 = Statement(["a"], "neg")
         prog1.insert_statement(stmt1)
-        stmt2 = Statement([stmt1._result_var_name], "return")
+        stmt2 = Statement([stmt1.result_var_name], "return")
         prog1.insert_statement(stmt2)
 
         prog2 = Program("prog2", ["x"])
         stmt3 = Statement(["x"], "neg")
         prog2.insert_statement(stmt3)
-        stmt4 = Statement([stmt3._result_var_name], "return")
+        stmt4 = Statement([stmt3.result_var_name], "return")
         prog2.insert_statement(stmt4)
 
         self.assertEqual(prog1.to_hash(), prog2.to_hash())

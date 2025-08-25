@@ -5,9 +5,11 @@ import sys
 import tempfile
 import unittest
 
+from program_searcher.evolution_operator import FullPopulationMutationOperator
 from program_searcher.exceptions import InvalidProgramSearchArgumentValue
 from program_searcher.history_tracker import CsvStepsTracker
 from program_searcher.mutation_strategy import (
+    InsertStatementMutationStrategy,
     RemoveStatementMutationStrategy,
     ReplaceStatementMutationStrategy,
     UpdateStatementArgsMutationStrategy,
@@ -30,7 +32,6 @@ class TestProgramSearchValidation(unittest.TestCase):
             "evaluate_program_func": lambda p: 0.0,
             "config": {
                 "pop_size": 10,
-                "tournament_size": 2,
                 "mutation_strategies": {
                     RemoveStatementMutationStrategy: 0.3,
                     ReplaceStatementMutationStrategy: 0.3,
@@ -50,19 +51,6 @@ class TestProgramSearchValidation(unittest.TestCase):
     def test_negative_pop_size(self):
         args = self.correct_args.copy()
         args["config"]["pop_size"] = -1
-        with self.assertRaises(InvalidProgramSearchArgumentValue):
-            ProgramSearch(**args)
-
-    def test_negative_tournament_size(self):
-        args = self.correct_args.copy()
-        args["config"]["tournament_size"] = -1
-        with self.assertRaises(InvalidProgramSearchArgumentValue):
-            ProgramSearch(**args)
-
-    def test_tournament_larger_than_pop(self):
-        args = self.correct_args.copy()
-        args["config"]["tournament_size"] = 20
-        args["config"]["pop_size"] = 10
         with self.assertRaises(InvalidProgramSearchArgumentValue):
             ProgramSearch(**args)
 
@@ -118,7 +106,7 @@ class TestProgramSearchValidation(unittest.TestCase):
             evaluate_program_func=eval_func,
             min_program_statements=1,
             max_program_statements=5,
-            config={"pop_size": 100, "restart_steps": 10, "logger": logger},
+            config={"pop_size": 50, "restart_steps": 10, "logger": logger},
         )
 
         result_pr, result_fitness = program_search.search()
@@ -151,19 +139,21 @@ class TestProgramSearchValidation(unittest.TestCase):
                 Statement(["a", "b"], func="op.multiply")
             )
             warm_start = WarmStartProgram(warm_start_program)
+            available_functions_local = {
+                "op.add": 2,
+                "op.substract": 2,
+                "const": 1,
+                "op.multiply": 2,
+            }
 
             mutation_strategies = {
-                UpdateStatementArgsMutationStrategy(): 1 / 4,
-                RemoveStatementMutationStrategy(): 1 / 4,
-                ReplaceStatementMutationStrategy(
-                    available_functions={
-                        "op.add": 2,
-                        "op.substract": 2,
-                        "const": 1,
-                        "op.multipy": 2,
-                    }
-                ): 1 / 2,
+                InsertStatementMutationStrategy(available_functions_local): 1 / 5,
+                UpdateStatementArgsMutationStrategy(): 1 / 5,
+                RemoveStatementMutationStrategy(): 1 / 5,
+                ReplaceStatementMutationStrategy(available_functions_local): 2 / 5,
             }
+
+            evolution_operator = FullPopulationMutationOperator()
 
             program_search = ProgramSearch(
                 program_name="test",
@@ -175,16 +165,15 @@ class TestProgramSearchValidation(unittest.TestCase):
                 min_program_statements=1,
                 max_program_statements=5,
                 config={
-                    "pop_size": 100,
+                    "pop_size": 50,
                     "restart_steps": 15,
                     "logger": logger,
-                    "tournament_size": 20,
                     "mutation_strategies": mutation_strategies,
                     "warm_start_program": warm_start,
                     "step_trackers": [
                         CsvStepsTracker(file_dir=csv_dir, save_batch_size=5)
                     ],
-                    "seed": 42,
+                    "evolution_operator": evolution_operator,
                 },
             )
 

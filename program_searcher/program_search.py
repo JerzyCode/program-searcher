@@ -4,6 +4,10 @@ from collections import deque
 
 from typing_extensions import Callable, Dict, List, Tuple
 
+from program_searcher.evolution_operator import (
+    EvolutionOperator,
+    TournamentSelectionOperator,
+)
 from program_searcher.exceptions import InvalidProgramSearchArgumentValue
 from program_searcher.history_tracker import Step, StepsTracker
 from program_searcher.mutation_strategy import (
@@ -18,6 +22,8 @@ _DEFAULT_MUTATION_STRATEGIES = {
     UpdateStatementArgsMutationStrategy(): 1 / 2,
     RemoveStatementMutationStrategy(): 1 / 2,
 }
+
+_DEFAULT_EVOLUTION_OPERATOR = TournamentSelectionOperator(tournament_size=2)
 
 
 class ProgramSearch:
@@ -47,7 +53,7 @@ class ProgramSearch:
             max_program_statements (int): Maximum number of statements in programs.
             config (dict, optional): Dictionary of optional parameters. Possible keys and their defaults:
                 - pop_size (int, default=1000): Population size.
-                - tournament_size (int, default=2): Tournament size for selection.
+                - evolution_operator (EvolutionOperator, default=TournamentSelectionOperator): operator that performs operations and update population.
                 - mutation_strategies (Dict[MutationStrategy,float], default=_DEFAULT_MUTATION_STRATEGIES): Mutation strategies with probabilities.
                 - restart_steps (int, default=None): Number of steps after which to restart search.
                 - warm_start_program (WarmStartProgram, default=None): Program to initialize population with.
@@ -66,7 +72,9 @@ class ProgramSearch:
 
         config = config or {}
         self.pop_size: int = config.get("pop_size", 1000)
-        self.tournament_size: int = config.get("tournament_size", 2)
+        self.evolution_operator: EvolutionOperator = config.get(
+            "evolution_operator", _DEFAULT_EVOLUTION_OPERATOR
+        )
         self.mutation_strategies: Dict[MutationStrategy, float] = config.get(
             "mutation_strategies", _DEFAULT_MUTATION_STRATEGIES
         )
@@ -91,21 +99,18 @@ class ProgramSearch:
 
     def search(self) -> Tuple[Program, float]:
         """
-        Executes the program search using a genetic programming approach.
+        Executes the program search using a genetic programming approach with a pluggable evolution operator.
 
-        This method runs the main search loop until the stop condition is met.
-        At each step, it performs the following operations in order:
+        The search loop runs until the configured stop condition is met. At each step, it performs the following operations:
 
-            1. Initializes the population if not already done.
+            1. Initializes the population if it hasn't been initialized yet.
             2. Evaluates the fitness of all programs in the population.
-            3. Performs tournament selection to choose a candidate program.
-            4. Mutates the tournament winner program according to mutation strategies.
-            5. Updates the population with the new mutated program.
-            6. Replaces programs that caused errors during execution.
-            7. Replaces equivalent programs to maintain diversity.
+            3. Applies the configured evolution operator to the population, which may mutate one or more programs in-place.
+            4. Replaces programs that caused execution errors.
+            5. Replaces equivalent programs to maintain diversity.
+            6. Optionally restarts the search at configured intervals (`self.restart_steps`).
 
-        Each step is tracked by a Step object, and any registered step trackers
-        are notified via `_on_step_is_done`.
+        Each step is tracked via a `Step` object, and any registered step trackers are notified through `_on_step_is_done`.
 
         Returns
         -------
@@ -116,10 +121,9 @@ class ProgramSearch:
 
         Notes
         -----
-        - The search process mutates programs in-place and updates internal
-        state including `self.best_program` and `self.best_program_fitness`.
-        - The search loop increments a step counter at each iteration, used for
-        tracking progress and logging.
+        - The population is modified in-place; the evolution operator determines whether one or multiple programs are mutated per step.
+        - Internal state such as `self.best_program` and `self.best_program_fitness` is updated continuously.
+        - Step counters and optional logging/statistics are handled by `Step` objects and step trackers.
         """
         steps_counter = 1
         self._initialize_population()
@@ -129,9 +133,11 @@ class ProgramSearch:
             step.start()
 
             self._evaluate_population()
-            self._torunament_selection()
-            self._mutate_tournament_winner()
-            self._update_population()
+            self.evolution_operator.apply(
+                population=self.population,
+                fitnesses=self.fitnesses,
+                mutation_strategies=self.mutation_strategies,
+            )
             self._replace_error_programs()
             self._replace_equivalent_programs()
 
@@ -175,29 +181,6 @@ class ProgramSearch:
                 self.fitnesses[program] = self.warm_start_program.fitness
             else:
                 self.fitnesses[program] = self.evaluate_program_func(program)
-
-    def _torunament_selection(self):
-        tournament_programs = random.choices(self.population, k=self.tournament_size)
-
-        best_program = max(tournament_programs, key=lambda prog: self.fitnesses[prog])
-        best_fitness = self.fitnesses[best_program]
-
-        self.tournament_winner = best_program.copy()
-        self.tournament_winner_fitness = best_fitness
-
-    def _mutate_tournament_winner(self):
-        strategies = list(self.mutation_strategies.keys())
-        weights = list(self.mutation_strategies.values())
-
-        chosen_strategy = random.choices(strategies, weights=weights, k=1)[0]
-        chosen_strategy.mutate(self.tournament_winner)
-
-    def _update_population(self):
-        program = self.population.popleft()
-        self.fitnesses.pop(program)
-
-        self.population.append(self.tournament_winner)
-        self.fitnesses[self.tournament_winner] = self.tournament_winner_fitness
 
     def _replace_error_programs(self):
         for index, program in enumerate(self.population):
@@ -254,7 +237,7 @@ class ProgramSearch:
 
         return program
 
-    def _generate_random_statement(self, program_vars: str) -> Statement:
+    def _generate_random_statement(self, program_vars: List[str]) -> Statement:
         func_name = random.choice(list(self.available_functions.keys()))
         allowed_args_size = self.available_functions[func_name]
         args = random.choices(program_vars, k=allowed_args_size)
@@ -310,16 +293,6 @@ class ProgramSearch:
         if self.pop_size < 0:
             raise InvalidProgramSearchArgumentValue(
                 f"pop_size must be non-negative, got {self.pop_size}."
-            )
-
-        if self.tournament_size < 0:
-            raise InvalidProgramSearchArgumentValue(
-                f"tournament_size must be non-negative, got {self.tournament_size}."
-            )
-
-        if self.tournament_size > self.pop_size:
-            raise InvalidProgramSearchArgumentValue(
-                f"tournament_size ({self.tournament_size}) cannot be greater than pop_size ({self.pop_size})."
             )
 
         if abs(sum(self.mutation_strategies.values()) - 1.0) > 1e-6:

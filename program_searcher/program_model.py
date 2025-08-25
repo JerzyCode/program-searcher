@@ -16,33 +16,33 @@ class Statement:
     CONST_KEYWORD = "const"
 
     def __init__(self, args: List, func: str):
-        self._result_var_name = None
+        self.result_var_name = None
         self.args = args
         self.func = func
 
     def set_result_var_name(self, result_var_name: str):
-        self._result_var_name = result_var_name
+        self.result_var_name = result_var_name
 
     def to_code(self) -> str:
         if not len(self.args):
-            return f"{self._result_var_name}={self.func}()"
+            return f"{self.result_var_name}={self.func}()"
         elif len(self.args) == 1:
             args_str = self.args[0]
         else:
             args_str = ", ".join(map(str, self.args))
 
         if self.func == self.CONST_KEYWORD:
-            return f"{self._result_var_name}={args_str}"
+            return f"{self.result_var_name}={args_str}"
         if self.func == self.RETURN_KEYWORD:
             return f"return {args_str}"
 
-        return f"{self._result_var_name}={self.func}({args_str})"
+        return f"{self.result_var_name}={self.func}({args_str})"
 
     def copy(self):
         args_copy = self.args.copy()
 
         new_stmt = Statement(args_copy, self.func)
-        new_stmt._result_var_name = self._result_var_name
+        new_stmt.result_var_name = self.result_var_name
         return new_stmt
 
     def __eq__(self, value):
@@ -97,16 +97,21 @@ class Program:
         self._ensure_proper_stmt_index(index)
         stmt_to_remove = self._statements[index]
 
+        if stmt_to_remove.result_var_name not in self.variables:
+            raise RemoveStatementError(
+                f"Variable '{stmt_to_remove.result_var_name}' is not contained in program variables."
+            )
+
         for stmt in self._statements:
-            if stmt_to_remove._result_var_name in stmt.args:
+            if stmt_to_remove.result_var_name in stmt.args:
                 raise RemoveStatementError(
-                    f"Variable '{stmt_to_remove._result_var_name}' is still referenced by another statement – cannot remove."
+                    f"Variable '{stmt_to_remove.result_var_name}' is still referenced by another statement – cannot remove."
                 )
 
         self._statements.remove(stmt_to_remove)
 
-        if stmt_to_remove._result_var_name is not None:
-            self.variables.remove(stmt_to_remove._result_var_name)
+        if stmt_to_remove.result_var_name is not None:
+            self.variables.remove(stmt_to_remove.result_var_name)
 
     def update_statement_full(self, index: int, new_func, new_args):
         if not self._statements:
@@ -241,7 +246,7 @@ class Program:
                         f"Currently defined variables: {defined_vars}"
                     )
 
-            defined_vars.add(stmt._result_var_name)
+            defined_vars.add(stmt.result_var_name)
 
     def to_hash(self):
         var_mapping = {}
@@ -260,10 +265,10 @@ class Program:
                     canonical_counter += 1
                 canon_args.append(var_mapping[arg])
 
-            if stmt._result_var_name not in var_mapping:
-                var_mapping[stmt._result_var_name] = f"v{canonical_counter}"
+            if stmt.result_var_name not in var_mapping:
+                var_mapping[stmt.result_var_name] = f"v{canonical_counter}"
                 canonical_counter += 1
-            result_var = var_mapping[stmt._result_var_name]
+            result_var = var_mapping[stmt.result_var_name]
 
             canonical_repr.append((stmt.func, tuple(canon_args), result_var))
 

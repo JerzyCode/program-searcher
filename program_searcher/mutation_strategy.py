@@ -1,10 +1,10 @@
 import random
 from abc import ABC, abstractmethod
 
-from typing_extensions import Dict, override
+from typing_extensions import Dict, List, override
 
 from program_searcher.exceptions import RemoveStatementError
-from program_searcher.program_model import Program
+from program_searcher.program_model import Program, Statement
 
 
 class MutationStrategy(ABC):
@@ -70,7 +70,7 @@ class RemoveStatementMutationStrategy(MutationStrategy, ABC):
             try:
                 statement_to_remove_idx = random.randrange(max_index)
                 program.remove_statement(statement_to_remove_idx)
-                break
+                return
             except RemoveStatementError:
                 pass
 
@@ -147,3 +147,41 @@ class UpdateStatementArgsMutationStrategy(MutationStrategy, ABC):
 
         new_args = random.choices(program.variables, k=statement_args_count)
         statement.args = new_args
+
+
+class InsertStatementMutationStrategy(MutationStrategy, ABC):
+    """
+    Mutation strategy that inserts a random statement into a program.
+
+    The statement is inserted at a random position before the return statement
+    (if present) to ensure the program remains valid. The new statement is
+    generated based on the allowed functions and their argument counts.
+
+    Attributes
+    ----------
+    available_functions : Dict[str, int]
+        A mapping of function names to the number of arguments they require.
+    """
+
+    def __init__(self, available_functions: Dict[str, int]):
+        self.available_functions = available_functions
+
+    @override
+    def mutate(self, program: Program):
+        if len(program) == 0:
+            return
+
+        max_index = len(program) - (1 if program.has_return_statement() else 0)
+        if max_index <= 0:
+            return
+
+        insert_index = random.randrange(max_index)
+
+        statement = self._generate_random_statement(program.variables)
+        program.insert_statement(statement, insert_index)
+
+    def _generate_random_statement(self, program_vars: List[str]) -> Statement:
+        func_name = random.choice(list(self.available_functions.keys()))
+        allowed_args_size = self.available_functions[func_name]
+        args = random.choices(program_vars, k=allowed_args_size)
+        return Statement(func=func_name, args=args)

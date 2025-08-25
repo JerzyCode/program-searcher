@@ -2,7 +2,7 @@
 name = "program-searcher"
 version = "0.1.0"
 description = ""
-authors = ["jerzyb <jerzyxboksa@gmail.com>"]
+authors = ["jerzyb <devjerzy@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
