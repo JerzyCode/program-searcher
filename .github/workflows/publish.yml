@@ -1,0 +1,54 @@
+name: Publish Package
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Decide repository
+      id: repo
+      run: |
+        VERSION="${GITHUB_REF#refs/tags/}"
+        echo "Detected version: $VERSION"
+
+        if [[ "$VERSION" == *"d"* ]]; then
+          echo "repository=testpypi" >> $GITHUB_OUTPUT
+        else
+          echo "repository=pypi" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Configure Poetry for TestPyPI
+      if: steps.repo.outputs.repository == 'testpypi'
+      run: |
+        poetry config repositories.testpypi https://test.pypi.org/legacy/
+        poetry config pypi-token.testpypi ${{ secrets.TEST_PYPI_API_TOKEN }}
+
+    - name: Configure Poetry for PyPI
+      if: steps.repo.outputs.repository == 'pypi'
+      run: |
+        poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
+
+    - name: Build and publish
+      run: |
+        poetry build
+        if [ "${{ steps.repo.outputs.repository }}" = "testpypi" ]; then
+          poetry publish -r testpypi --no-interaction --skip-existing
+        else
+          poetry publish --no-interaction --skip-existing
+        fi
