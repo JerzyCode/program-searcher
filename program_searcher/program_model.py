@@ -1,6 +1,7 @@
 import copy
 import hashlib
 
+import networkx as nx
 from typing_extensions import Callable, Dict, List
 
 from program_searcher.exceptions import (
@@ -45,14 +46,8 @@ class Statement:
         new_stmt.result_var_name = self.result_var_name
         return new_stmt
 
-    def __eq__(self, value):
-        if not isinstance(value, Statement):
-            return False
-
-        return self.func == value.func and self.args == value.args
-
-    def __hash__(self):
-        return hash((self.func, tuple(self.args)))
+    def is_equivalent(self, other: "Statement"):
+        return self.func == other.func and self.args == other.args
 
 
 class Program:
@@ -71,6 +66,7 @@ class Program:
         self.last_variable_index = 1
         self.execution_error = None
         self.program_str = None
+        self.graph: nx.Graph = None
 
     def get_statement(self, index: int):
         self._ensure_proper_stmt_index(index)
@@ -248,6 +244,49 @@ class Program:
 
             defined_vars.add(stmt.result_var_name)
 
+    def generate_graph(self) -> nx.DiGraph:
+        if not self.has_return_statement():
+            raise ExecuteProgramError(
+                "Program must contain a return statement to generate graph."
+            )
+
+        G = nx.DiGraph()
+        func_counts: Dict[str, int] = {}
+        arg_counts: Dict[str, int] = {}
+        var_stmts: Dict[str, Statement] = {}
+        stmt_nodes: Dict[Statement, str] = {}
+
+        def create_func_node(stmt: Statement):
+            node_id = f"{stmt.func}_{func_counts.get(stmt.func, 0)}"
+            G.add_node(node_id, label=stmt.func, type="func")
+            func_counts[stmt.func] = func_counts.get(stmt.func, 0) + 1
+            stmt_nodes[stmt] = node_id
+            return node_id
+
+        def create_input_node(arg):
+            if arg not in self.program_arg_names:
+                return
+            node_id = f"{arg}_{arg_counts.get(arg, 0)}"
+            G.add_node(node_id, label=arg, type="input")
+            arg_counts[arg] = arg_counts.get(arg, 0) + 1
+            return node_id
+
+        for stmt in self._statements:
+            create_func_node(stmt)
+            var_stmts[stmt.result_var_name] = stmt
+
+        for stmt, node_id in stmt_nodes.items():
+            for idx, arg in enumerate(stmt.args):
+                if arg in self.program_arg_names:
+                    arg_node_id = create_input_node(arg)
+                    G.add_edge(arg_node_id, node_id, arg_pos=idx)
+                else:
+                    res_stmt = var_stmts[arg]
+                    prev_node_id = stmt_nodes[res_stmt]
+                    G.add_edge(prev_node_id, node_id, arg_pos=idx)
+
+        self.graph = G
+
     def to_hash(self):
         var_mapping = {}
         canonical_counter = 0
@@ -285,7 +324,7 @@ class Program:
     def to_python_func(self, global_args: Dict[str, object] = {}) -> Callable:
         local_ns = {}
         exec(self.program_str, global_args, local_ns)
-        func = local_ns[self.program_arg_names]
+        func = local_ns[self.program_name]
 
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)

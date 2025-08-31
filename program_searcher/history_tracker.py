@@ -6,6 +6,8 @@ from datetime import datetime
 
 from typing_extensions import override
 
+from program_searcher.program_model import Program
+
 
 class Step:
     """
@@ -39,10 +41,10 @@ class Step:
         self.start_time = None
         self.end_time = None
         self.pop_best_program_fitness = None
-        self.pop_best_program_code = None
+        self.pop_best_program = None
         self.working_programs_percent = None
         self.overall_best_fitness = None
-        self.overall_best_program_code = None
+        self.overall_best_program = None
         self.duration = None
 
     def start(self):
@@ -55,27 +57,16 @@ class Step:
     def insert_stats(
         self,
         pop_best_program_fitness: float,
-        pop_best_program_code: str,
+        pop_best_program: Program,
         working_programs_percent: float,
         overall_best_fitness: float,
-        overall_best_program_code: str = None,
+        overall_best_program: Program = None,
     ):
         self.pop_best_program_fitness = pop_best_program_fitness
-        self.pop_best_program_code = pop_best_program_code
+        self.pop_best_program = pop_best_program
         self.working_programs_percent = working_programs_percent
         self.overall_best_fitness = overall_best_fitness
-        self.overall_best_program_code = overall_best_program_code
-
-    def to_row(self):
-        return [
-            self.step,
-            self.duration,
-            self.pop_best_program_fitness,
-            self.working_programs_percent,
-            self.overall_best_fitness,
-            self.pop_best_program_code,
-            self.overall_best_program_code,
-        ]
+        self.overall_best_program = overall_best_program
 
 
 class StepsTracker(ABC):
@@ -167,4 +158,15 @@ class CsvStepsTracker(StepsTracker):
         with open(self.file_path, mode="a", newline="") as f:
             writer = csv.writer(f)
             for s in self.steps:
-                writer.writerow(s.to_row())
+                writer.writerow(self.to_row(s))
+
+    def to_row(self, step: Step):
+        return [
+            step.step,
+            step.duration,
+            step.pop_best_program_fitness,
+            step.working_programs_percent,
+            step.overall_best_fitness,
+            step.pop_best_program.program_str,
+            step.overall_best_program.program_str,
+        ]

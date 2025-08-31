@@ -1,5 +1,7 @@
 import unittest
 
+import networkx as nx
+
 from program_searcher.exceptions import (
     ExecuteProgramError,
     RemoveStatementError,
@@ -34,22 +36,19 @@ class TestStatement(unittest.TestCase):
         stmt6.set_result_var_name("X")
         self.assertEqual(stmt6.to_code(), "X=get_data()")
 
-    def test_equal(self):
+    def test_is_equivalent(self):
         stmt1 = Statement(args=["x", "y"], func="add")
         stmt2 = Statement(args=["x", "y"], func="add")
-        self.assertEqual(stmt1, stmt2)
-
-        stmt_copy = stmt1.copy()
-        self.assertEqual(stmt1, stmt_copy)
-        self.assertIsNot(stmt1, stmt_copy)
+        self.assertTrue(stmt1.is_equivalent(stmt2))
+        self.assertNotEqual(stmt1, stmt2)
 
         stmt1 = Statement(args=["x", "y"], func="add")
         stmt2 = Statement(args=["x", "y"], func="substract")
         stmt3 = Statement(args=["a", "y"], func="substract")
 
-        self.assertNotEqual(stmt1, stmt2)
-        self.assertNotEqual(stmt1, stmt3)
-        self.assertNotEqual(stmt2, stmt3)
+        self.assertFalse(stmt1.is_equivalent(stmt2))
+        self.assertFalse(stmt1.is_equivalent(stmt3))
+        self.assertFalse(stmt2.is_equivalent(stmt3))
 
 
 class TestProgram(unittest.TestCase):
@@ -181,6 +180,104 @@ class TestProgram(unittest.TestCase):
 
         self.assertNotEqual(id(self.prog), id(prog_copy))
         self.assertNotEqual(id(self.prog._statements[0]), id(prog_copy._statements[0]))
+
+    def test_generate_graph_should_raise_when_no_return(self):
+        with self.assertRaises(ExecuteProgramError):
+            self.prog.generate_graph()
+
+    def test_generate_empty_program_graph(self):
+        empty_program = Program(program_name="empty_prog", program_arg_names=[])
+        empty_program.insert_statement(Statement(args=[], func="return"))
+        empty_program.generate_graph()
+
+        graph = empty_program.graph
+
+        self.assertIsNotNone(graph)
+        self.assertEqual(len(graph.nodes), 1)
+        self.assertEqual(len(graph.edges), 0)
+
+    def test_generate_program_graph(self):
+        program = Program("test_prog", program_arg_names=["w", "g", "lr"])
+        program.insert_statement(Statement(args=["w"], func="negate"))  # x1
+        program.insert_statement(Statement(args=["g", "lr"], func="mult"))  # x2
+        program.insert_statement(Statement(args=["x2"], func="negate"))  # x3
+        program.insert_statement(Statement(args=["w", "x3"], func="add"))  # x4
+        program.insert_statement(Statement(args=["x4"], func="return"))
+
+        program.generate_graph()
+        graph = program.graph
+
+        expected_edges = [
+            ("w_0", "negate_0"),
+            ("g_0", "mult_0"),
+            ("lr_0", "mult_0"),
+            ("mult_0", "negate_1"),
+            ("w_1", "add_0"),
+            ("negate_1", "add_0"),
+            ("add_0", "return_0"),
+        ]
+        expected_graph = nx.DiGraph()
+        expected_graph.add_edges_from(expected_edges)
+
+        self.assertTrue(nx.is_isomorphic(graph, expected_graph))
+
+    def test_generate_program_graph_two_return(self):
+        program = Program(
+            "test_prog", program_arg_names=["w", "g", "gamma", "m", "eta"]
+        )
+        program.insert_statement(Statement(args=["eta", "g"], func="mult"))  # x1
+        program.insert_statement(Statement(args=["gamma", "m"], func="mult"))  # x2
+        program.insert_statement(Statement(args=["x1", "x2"], func="add"))  # x3
+        program.insert_statement(Statement(args=["w", "x3"], func="sub"))  # x4
+        program.insert_statement(Statement(args=["x3", "x4"], func="return"))
+
+        program.generate_graph()
+        graph = program.graph
+
+        expected_edges = [
+            ("eta_0", "mult_0"),
+            ("g_0", "mult_0"),
+            ("gamma_0", "mult_1"),
+            ("m_0", "mult_1"),
+            ("mult_0", "add_0"),
+            ("mult_1", "add_0"),
+            ("add_0", "sub_0"),
+            ("w_0", "sub_0"),
+            ("sub_0", "return_0"),
+            ("add_0", "return_0"),
+        ]
+
+        expected_graph = nx.DiGraph()
+        expected_graph.add_edges_from(expected_edges)
+
+        self.assertTrue(nx.is_isomorphic(graph, expected_graph))
+
+    def test_generate_program_graph_unused_parts(self):
+        program = Program("test_prog", program_arg_names=["a", "b"])
+        program.insert_statement(Statement(args=["a", "b"], func="add"))  # x1
+        program.insert_statement(Statement(args=["x1"], func="negate"))  # x2
+        program.insert_statement(Statement(args=["b", "x2"], func="add"))  # x3
+        program.insert_statement(Statement(args=["a", "b"], func="add"))  # x4
+        program.insert_statement(Statement(args=["x3"], func="return"))
+
+        program.generate_graph()
+        graph = program.graph
+
+        expected_edges = [
+            ("a_0", "add_0"),
+            ("b_0", "add_0"),
+            ("add_0", "negate_0"),
+            ("negate_0", "add_1"),
+            ("b_1", "add_1"),
+            ("add_1", "return_0"),
+            ("a_1", "add_2"),
+            ("b_2", "add_2"),
+        ]
+
+        expected_graph = nx.DiGraph()
+        expected_graph.add_edges_from(expected_edges)
+
+        self.assertTrue(nx.is_isomorphic(graph, expected_graph))
 
 
 if __name__ == "__main__":
