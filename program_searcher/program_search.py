@@ -259,9 +259,9 @@ class ProgramSearch:
 
         step.insert_stats(
             pop_best_program_fitness=pop_best_fitness,
-            pop_best_program_code=pop_best_program.program_str,
+            pop_best_program=pop_best_program,
             overall_best_fitness=self.best_program_fitness,
-            overall_best_program_code=self.best_program.program_str,
+            overall_best_program=self.best_program,
             working_programs_percent=working_programs_percent,
         )
 
