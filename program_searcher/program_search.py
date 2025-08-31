@@ -19,11 +19,6 @@ from program_searcher.mutation_strategy import (
 from program_searcher.program_model import Program, Statement, WarmStartProgram
 from program_searcher.stop_condition import StopCondition
 
-_DEFAULT_MUTATION_STRATEGIES = {
-    UpdateStatementArgsMutationStrategy(): 1 / 2,
-    RemoveStatementMutationStrategy(): 1 / 2,
-}
-
 
 class ProgramSearch:
     def __init__(

@@ -19,7 +19,7 @@ from program_searcher.program_search import ProgramSearch
 from program_searcher.stop_condition import MaxStepsStopCondition
 
 
-class TestProgramSearchValidation(unittest.TestCase):
+class TestProgramSearch(unittest.TestCase):
     def setUp(self):
         self.correct_args = {
             "program_name": "test_program",
@@ -32,11 +32,6 @@ class TestProgramSearchValidation(unittest.TestCase):
             "evaluate_program_func": lambda p: 0.0,
             "config": {
                 "pop_size": 10,
-                "mutation_strategies": {
-                    RemoveStatementMutationStrategy: 0.3,
-                    ReplaceStatementMutationStrategy: 0.3,
-                    UpdateStatementArgsMutationStrategy: 0.4,
-                },
                 "logger": logging.getLogger("test_logger"),
             },
         }
@@ -91,6 +86,9 @@ class TestProgramSearchValidation(unittest.TestCase):
             logger = logging.getLogger("program_searcher")
             logger.setLevel(logging.DEBUG)
 
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setLevel(logging.INFO)
+
             file_handler = logging.FileHandler(log_file)
             file_handler.setLevel(logging.DEBUG)
             formatter = logging.Formatter(
@@ -98,6 +96,7 @@ class TestProgramSearchValidation(unittest.TestCase):
             )
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
+            logger.addHandler(console_handler)
 
             warm_start_program = Program(
                 program_name="test", program_arg_names=["a", "b"]
