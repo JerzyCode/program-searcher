@@ -46,14 +46,8 @@ class Statement:
         new_stmt.result_var_name = self.result_var_name
         return new_stmt
 
-    def __eq__(self, value):
-        if not isinstance(value, Statement):
-            return False
-
-        return self.func == value.func and self.args == value.args
-
-    def __hash__(self):
-        return hash((self.func, tuple(self.args)))
+    def is_equivalent(self, other: "Statement"):
+        return self.func == other.func and self.args == other.args
 
 
 class Program:
@@ -253,7 +247,7 @@ class Program:
     def generate_graph(self) -> nx.DiGraph:
         if not self.has_return_statement():
             raise ExecuteProgramError(
-                "Program must contain a return statement,to generate graph."
+                "Program must contain a return statement to generate graph."
             )
 
         G = nx.DiGraph()
