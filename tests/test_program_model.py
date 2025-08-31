@@ -283,7 +283,7 @@ class TestProgram(unittest.TestCase):
         program = Program("test_prog", program_arg_names=["a"])
         program.insert_statement(Statement(args=[0.001], func="const"))  # x1
         program.insert_statement(Statement(args=["x1", "a"], func="add"))  # x2
-        program.insert_statement(Statement(args=["x2", 0.5], func="mult"))  # x3
+        program.insert_statement(Statement(args=["x2", 5], func="mult"))  # x3
         program.insert_statement(Statement(args=["x3"], func="return"))
 
         program.generate_graph()
