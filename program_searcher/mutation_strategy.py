@@ -140,12 +140,16 @@ class UpdateStatementArgsMutationStrategy(MutationStrategy, ABC):
     def mutate(self, program: Program):
         if len(program) == 0:
             return
-
         statement_idx = random.randrange(len(program))
         statement = program.get_statement(statement_idx)
         statement_args_count = len(statement.args)
 
-        new_args = random.choices(program.variables, k=statement_args_count)
+        pr_vars = set(program.variables)
+
+        if statement.func != Statement.RETURN_KEYWORD:
+            pr_vars.remove(statement.result_var_name)
+
+        new_args = random.choices(list(pr_vars), k=statement_args_count)
         statement.args = new_args
 
 
