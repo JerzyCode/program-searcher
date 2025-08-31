@@ -324,7 +324,7 @@ class Program:
     def to_python_func(self, global_args: Dict[str, object] = {}) -> Callable:
         local_ns = {}
         exec(self.program_str, global_args, local_ns)
-        func = local_ns[self.program_arg_names]
+        func = local_ns[self.program_name]
 
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
