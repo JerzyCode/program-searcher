@@ -264,7 +264,7 @@ class Program:
             return node_id
 
         def create_input_node(arg):
-            if arg not in self.program_arg_names:
+            if arg not in self.program_arg_names and not isinstance(arg, float):
                 return
             node_id = f"{arg}_{arg_counts.get(arg, 0)}"
             G.add_node(node_id, label=arg, type="input")
@@ -277,7 +277,7 @@ class Program:
 
         for stmt, node_id in stmt_nodes.items():
             for idx, arg in enumerate(stmt.args):
-                if arg in self.program_arg_names:
+                if arg in self.program_arg_names or isinstance(arg, float):
                     arg_node_id = create_input_node(arg)
                     G.add_edge(arg_node_id, node_id, arg_pos=idx)
                 else:

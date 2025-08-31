@@ -279,6 +279,30 @@ class TestProgram(unittest.TestCase):
 
         self.assertTrue(nx.is_isomorphic(graph, expected_graph))
 
+    def test_generate_program_graph_with_consts(self):
+        program = Program("test_prog", program_arg_names=["a"])
+        program.insert_statement(Statement(args=[0.001], func="const"))  # x1
+        program.insert_statement(Statement(args=["x1", "a"], func="add"))  # x2
+        program.insert_statement(Statement(args=["x2", 0.5], func="mult"))  # x3
+        program.insert_statement(Statement(args=["x3"], func="return"))
+
+        program.generate_graph()
+        graph = program.graph
+
+        expected_edges = [
+            ("0.001_0", "const_0"),
+            ("const_0", "add_0"),
+            ("a_0", "add_0"),
+            ("0.5_0", "mult_0"),
+            ("add_0", "mult_0"),
+            ("mult_0", "return_0"),
+        ]
+
+        expected_graph = nx.DiGraph()
+        expected_graph.add_edges_from(expected_edges)
+
+        self.assertTrue(nx.is_isomorphic(graph, expected_graph))
+
 
 if __name__ == "__main__":
     unittest.main()
