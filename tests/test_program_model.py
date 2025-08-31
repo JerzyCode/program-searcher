@@ -171,7 +171,13 @@ class TestProgram(unittest.TestCase):
         stmt4 = Statement([stmt3.result_var_name], "return")
         prog2.insert_statement(stmt4)
 
+        prog3 = Program("prog3", ["c", "b"])
+        prog3.insert_statement(Statement(args=[1.0, 2.0], func="add"))
+        prog3.insert_statement(Statement(args=["x1"], func="return"))
+
         self.assertEqual(prog1.to_hash(), prog2.to_hash())
+        self.assertNotEqual(prog3.to_hash(), prog1.to_hash())
+        self.assertNotEqual(prog3.to_hash(), prog2.to_hash())
 
     def test_copy_creates_independent_program(self):
         stmt = Statement(["a", "b"], "add")

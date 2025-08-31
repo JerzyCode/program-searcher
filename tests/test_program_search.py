@@ -138,6 +138,7 @@ class TestProgramSearchValidation(unittest.TestCase):
             warm_start_program.insert_statement(
                 Statement(["a", "b"], func="op.multiply")
             )
+            warm_start_program.insert_statement(Statement(["a"], func="return"))
             warm_start = WarmStartProgram(warm_start_program)
             available_functions_local = {
                 "op.add": 2,
