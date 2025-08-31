@@ -171,7 +171,13 @@ class TestProgram(unittest.TestCase):
         stmt4 = Statement([stmt3.result_var_name], "return")
         prog2.insert_statement(stmt4)
 
+        prog3 = Program("prog3", ["c", "b"])
+        prog3.insert_statement(Statement(args=[1.0, 2.0], func="add"))
+        prog3.insert_statement(Statement(args=["x1"], func="return"))
+
         self.assertEqual(prog1.to_hash(), prog2.to_hash())
+        self.assertNotEqual(prog3.to_hash(), prog1.to_hash())
+        self.assertNotEqual(prog3.to_hash(), prog2.to_hash())
 
     def test_copy_creates_independent_program(self):
         stmt = Statement(["a", "b"], "add")
@@ -272,6 +278,30 @@ class TestProgram(unittest.TestCase):
             ("add_1", "return_0"),
             ("a_1", "add_2"),
             ("b_2", "add_2"),
+        ]
+
+        expected_graph = nx.DiGraph()
+        expected_graph.add_edges_from(expected_edges)
+
+        self.assertTrue(nx.is_isomorphic(graph, expected_graph))
+
+    def test_generate_program_graph_with_consts(self):
+        program = Program("test_prog", program_arg_names=["a"])
+        program.insert_statement(Statement(args=[0.001], func="const"))  # x1
+        program.insert_statement(Statement(args=["x1", "a"], func="add"))  # x2
+        program.insert_statement(Statement(args=["x2", 5], func="mult"))  # x3
+        program.insert_statement(Statement(args=["x3"], func="return"))
+
+        program.generate_graph()
+        graph = program.graph
+
+        expected_edges = [
+            ("0.001_0", "const_0"),
+            ("const_0", "add_0"),
+            ("a_0", "add_0"),
+            ("0.5_0", "mult_0"),
+            ("add_0", "mult_0"),
+            ("mult_0", "return_0"),
         ]
 
         expected_graph = nx.DiGraph()

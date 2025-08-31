@@ -8,22 +8,16 @@ from program_searcher.evolution_operator import (
     EvolutionOperator,
     TournamentSelectionOperator,
 )
-from program_searcher.exceptions import InvalidProgramSearchArgumentValue
+from program_searcher.exceptions import InvalidProgramSearchArgumentValueError
 from program_searcher.history_tracker import Step, StepsTracker
 from program_searcher.mutation_strategy import (
-    MutationStrategy,
+    InsertStatementMutationStrategy,
     RemoveStatementMutationStrategy,
+    ReplaceStatementMutationStrategy,
     UpdateStatementArgsMutationStrategy,
 )
 from program_searcher.program_model import Program, Statement, WarmStartProgram
 from program_searcher.stop_condition import StopCondition
-
-_DEFAULT_MUTATION_STRATEGIES = {
-    UpdateStatementArgsMutationStrategy(): 1 / 2,
-    RemoveStatementMutationStrategy(): 1 / 2,
-}
-
-_DEFAULT_EVOLUTION_OPERATOR = TournamentSelectionOperator(tournament_size=2)
 
 
 class ProgramSearch:
@@ -54,7 +48,6 @@ class ProgramSearch:
             config (dict, optional): Dictionary of optional parameters. Possible keys and their defaults:
                 - pop_size (int, default=1000): Population size.
                 - evolution_operator (EvolutionOperator, default=TournamentSelectionOperator): operator that performs operations and update population.
-                - mutation_strategies (Dict[MutationStrategy,float], default=_DEFAULT_MUTATION_STRATEGIES): Mutation strategies with probabilities.
                 - restart_steps (int, default=None): Number of steps after which to restart search.
                 - warm_start_program (WarmStartProgram, default=None): Program to initialize population with.
                 - logger (logging.Logger, default=logging.getLogger(__name__)): Logger for informational and error messages.
@@ -73,11 +66,9 @@ class ProgramSearch:
         config = config or {}
         self.pop_size: int = config.get("pop_size", 1000)
         self.evolution_operator: EvolutionOperator = config.get(
-            "evolution_operator", _DEFAULT_EVOLUTION_OPERATOR
+            "evolution_operator", self._create_default_evolution_operator()
         )
-        self.mutation_strategies: Dict[MutationStrategy, float] = config.get(
-            "mutation_strategies", _DEFAULT_MUTATION_STRATEGIES
-        )
+
         self.restart_steps: int = config.get("restart_steps")
         self.warm_start_program: WarmStartProgram = config.get("warm_start_program")
         self.logger: logging.Logger = config.get("logger") or logging.getLogger(
@@ -136,7 +127,6 @@ class ProgramSearch:
             self.evolution_operator.apply(
                 population=self.population,
                 fitnesses=self.fitnesses,
-                mutation_strategies=self.mutation_strategies,
             )
             self._replace_error_programs()
             self._replace_equivalent_programs()
@@ -177,6 +167,9 @@ class ProgramSearch:
         )
 
         for program in self.population:
+            if program in self.fitnesses and self.fitnesses[program] is not None:
+                continue
+
             if warm_hash is not None and program.to_hash() == warm_hash:
                 self.fitnesses[program] = self.warm_start_program.fitness
             else:
@@ -189,7 +182,6 @@ class ProgramSearch:
                     f"Replacing program at index {index} failed execution: {program.execution_error}"
                 )
                 self.population[index] = self._get_program_replacement()
-                continue
 
     def _replace_equivalent_programs(self):
         seen_program_hashes = set()
@@ -285,27 +277,25 @@ class ProgramSearch:
 
     def _validate_arguments(self):
         if self.min_program_statements > self.max_program_statements:
-            raise InvalidProgramSearchArgumentValue(
+            raise InvalidProgramSearchArgumentValueError(
                 f"min_program_statements ({self.min_program_statements}) cannot be greater than "
                 f"max_program_statements ({self.max_program_statements})."
             )
 
         if self.pop_size < 0:
-            raise InvalidProgramSearchArgumentValue(
+            raise InvalidProgramSearchArgumentValueError(
                 f"pop_size must be non-negative, got {self.pop_size}."
             )
 
-        if abs(sum(self.mutation_strategies.values()) - 1.0) > 1e-6:
-            raise InvalidProgramSearchArgumentValue(
-                f"sum of mutation_strategies values must be 1.0, but is {sum(self.mutation_strategies.values())}."
-            )
+    def _create_default_evolution_operator(self):
+        mutation_strategies = {
+            UpdateStatementArgsMutationStrategy(): 1 / 4,
+            RemoveStatementMutationStrategy(): 1 / 4,
+            ReplaceStatementMutationStrategy(self.available_functions): 1 / 4,
+            InsertStatementMutationStrategy(self.available_functions): 1 / 4,
+        }
 
-        if any(value < 0 for value in self.mutation_strategies.values()):
-            raise InvalidProgramSearchArgumentValue(
-                f"all mutation_strategies values must be >= 0. current values: {self.mutation_strategies}."
-            )
-
-        if any(value > 1 for value in self.mutation_strategies.values()):
-            raise InvalidProgramSearchArgumentValue(
-                f"all mutation_strategies values must be <= 1. current values: {self.mutation_strategies}."
-            )
+        evolution_operator = TournamentSelectionOperator(
+            tournament_size=1, mutation_strategies=mutation_strategies
+        )
+        return evolution_operator
