@@ -8,6 +8,8 @@ from program_searcher.mutation_strategy import (
 )
 from program_searcher.program_model import Program, Statement
 
+random.seed(42)
+
 
 def make_program_with_return():
     prog = Program(program_name="dummy", program_arg_names=["X", "y"])
@@ -178,8 +180,7 @@ class TestUpdateStatementArgsMutationStrategy(unittest.TestCase):
             any(
                 orig != stmt.args
                 for orig, stmt in zip(original_args, mutated._statements)
-            ),
-            "Żaden statement nie zmienił argumentów",
+            )
         )
 
 

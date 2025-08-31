@@ -4,18 +4,14 @@ from collections import deque
 
 from typing_extensions import Dict, override
 
+from program_searcher.exceptions import InvalidMutationStrategiesError
 from program_searcher.mutation_strategy import MutationStrategy
 from program_searcher.program_model import Program
 
 
 class EvolutionOperator(ABC):
     @abstractmethod
-    def apply(
-        self,
-        population: deque[Program],
-        fitnesses: Dict[Program, float],
-        mutation_strategies: Dict[MutationStrategy, float],
-    ):
+    def apply(self, population: deque[Program], fitnesses: Dict[Program, float]):
         """
         Applies an evolution step to the population.
 
@@ -25,9 +21,6 @@ class EvolutionOperator(ABC):
             Current population of programs.
         fitnesses : Dict[Program, float]
             Mapping from program to its fitness.
-        mutation_strategies : Dict[MutationStrategy, float]
-            Per-program mutation strategies with associated probabilities.
-
         """
         raise NotImplementedError
 
@@ -47,29 +40,45 @@ class TournamentSelectionOperator(EvolutionOperator, ABC):
         The number of programs to include in each tournament.
     """
 
-    def __init__(self, tournament_size: int):
+    def __init__(
+        self, tournament_size: int, mutation_strategies: Dict[MutationStrategy, float]
+    ):
         self.tournament_size = tournament_size
+        self.mutation_strategies = mutation_strategies
+
+        self._validate_mutation_strategies()
 
     @override
-    def apply(
-        self,
-        population: deque[Program],
-        fitnesses: Dict[Program, float],
-        mutation_strategies: Dict[MutationStrategy, float],
-    ):
+    def apply(self, population: deque[Program], fitnesses: Dict[Program, float]):
         tournament_programs = random.choices(population, k=self.tournament_size)
         tournament_winner = max(tournament_programs, key=lambda prog: fitnesses[prog])
 
         program = population.popleft()
         fitnesses.pop(program)
 
-        strategies = list(mutation_strategies.keys())
-        weights = list(mutation_strategies.values())
+        strategies = list(self.mutation_strategies.keys())
+        weights = list(self.mutation_strategies.values())
 
         chosen_strategy = random.choices(strategies, weights=weights, k=1)[0]
         mutated_program = chosen_strategy.mutate(tournament_winner)
 
         population.append(mutated_program)
+
+    def _validate_mutation_strategies(self):
+        if abs(sum(self.mutation_strategies.values()) - 1.0) > 1e-6:
+            raise InvalidMutationStrategiesError(
+                f"sum of mutation_strategies values must be 1.0, but is {sum(self.mutation_strategies.values())}."
+            )
+
+        if any(value < 0 for value in self.mutation_strategies.values()):
+            raise InvalidMutationStrategiesError(
+                f"all mutation_strategies values must be >= 0. current values: {self.mutation_strategies}."
+            )
+
+        if any(value > 1 for value in self.mutation_strategies.values()):
+            raise InvalidMutationStrategiesError(
+                f"all mutation_strategies values must be <= 1. current values: {self.mutation_strategies}."
+            )
 
 
 class FullPopulationMutationOperator(EvolutionOperator):
@@ -93,17 +102,15 @@ class FullPopulationMutationOperator(EvolutionOperator):
       within this method.
     """
 
+    def __init__(self, mutation_strategies: Dict[MutationStrategy, float]):
+        self.mutation_strategies = mutation_strategies
+
     @override
-    def apply(
-        self,
-        population: deque[Program],
-        fitnesses: Dict[Program, float],
-        mutation_strategies: Dict[MutationStrategy, float],
-    ):
+    def apply(self, population: deque[Program], fitnesses: Dict[Program, float]):
         for index, program in enumerate(population):
             chosen_strategy = random.choices(
-                list(mutation_strategies.keys()),
-                weights=list(mutation_strategies.values()),
+                list(self.mutation_strategies.keys()),
+                weights=list(self.mutation_strategies.values()),
                 k=1,
             )[0]
 

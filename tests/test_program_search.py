@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 from program_searcher.evolution_operator import FullPopulationMutationOperator
-from program_searcher.exceptions import InvalidProgramSearchArgumentValue
+from program_searcher.exceptions import InvalidProgramSearchArgumentValueError
 from program_searcher.history_tracker import CsvStepsTracker
 from program_searcher.mutation_strategy import (
     InsertStatementMutationStrategy,
@@ -45,43 +45,13 @@ class TestProgramSearchValidation(unittest.TestCase):
         args = self.correct_args.copy()
         args["min_program_statements"] = 6
         args["max_program_statements"] = 5
-        with self.assertRaises(InvalidProgramSearchArgumentValue):
+        with self.assertRaises(InvalidProgramSearchArgumentValueError):
             ProgramSearch(**args)
 
     def test_negative_pop_size(self):
         args = self.correct_args.copy()
         args["config"]["pop_size"] = -1
-        with self.assertRaises(InvalidProgramSearchArgumentValue):
-            ProgramSearch(**args)
-
-    def test_invalid_mutation_strategies_sum(self):
-        args = self.correct_args.copy()
-        args["config"]["mutation_strategies"] = {
-            ReplaceStatementMutationStrategy: 0.5,
-            RemoveStatementMutationStrategy: 0.5,
-            UpdateStatementArgsMutationStrategy: 0.5,
-        }
-        with self.assertRaises(InvalidProgramSearchArgumentValue):
-            ProgramSearch(**args)
-
-    def test_mutation_strategies_negative_value(self):
-        args = self.correct_args.copy()
-        args["config"]["mutation_strategies"] = {
-            RemoveStatementMutationStrategy: -0.1,
-            ReplaceStatementMutationStrategy: 0.6,
-            UpdateStatementArgsMutationStrategy: 0.5,
-        }
-        with self.assertRaises(InvalidProgramSearchArgumentValue):
-            ProgramSearch(**args)
-
-    def test_mutation_strategies_value_greater_than_one(self):
-        args = self.correct_args.copy()
-        args["config"]["mutation_strategies"] = {
-            RemoveStatementMutationStrategy: 1.1,
-            ReplaceStatementMutationStrategy: -0.05,
-            UpdateStatementArgsMutationStrategy: -0.05,
-        }
-        with self.assertRaises(InvalidProgramSearchArgumentValue):
+        with self.assertRaises(InvalidProgramSearchArgumentValueError):
             ProgramSearch(**args)
 
     def test_search_with_defaults_should_not_raise_any(self):
@@ -154,7 +124,7 @@ class TestProgramSearchValidation(unittest.TestCase):
                 ReplaceStatementMutationStrategy(available_functions_local): 2 / 5,
             }
 
-            evolution_operator = FullPopulationMutationOperator()
+            evolution_operator = FullPopulationMutationOperator(mutation_strategies)
 
             program_search = ProgramSearch(
                 program_name="test",
@@ -169,7 +139,6 @@ class TestProgramSearchValidation(unittest.TestCase):
                     "pop_size": 50,
                     "restart_steps": 15,
                     "logger": logger,
-                    "mutation_strategies": mutation_strategies,
                     "warm_start_program": warm_start,
                     "step_trackers": [
                         CsvStepsTracker(file_dir=csv_dir, save_batch_size=5)
