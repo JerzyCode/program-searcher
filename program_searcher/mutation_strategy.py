@@ -11,26 +11,27 @@ class MutationStrategy(ABC):
     """
     Abstract base class for mutation strategies.
 
-    Each implementation should modify the given `Program` object **in-place**
-    rather than returning a new object. This ensures that mutation is applied
-    directly without requiring extra copying or reassignment logic.
+    Each implementation should create a **new Program instance** that represents
+    the mutated version of the original program, rather than modifying the
+    input program in-place. This ensures that the original program remains
+    unchanged and allows safe caching of fitness values.
     """
 
     @abstractmethod
-    def mutate(self, program: Program):
+    def mutate(self, program: Program) -> Program:
         """
-        Mutates the given program in-place.
+        Produces a mutated copy of the given program.
 
         Parameters
         ----------
         program : Program
-            The program object to be mutated.
+            The original program to base the mutation on. This program
+            **must not** be modified.
 
         Returns
         -------
-        None
-            The mutation is applied directly to `program`; no new object
-            should be returned.
+        Program
+            A new Program instance representing the mutated version of the input.
         """
         raise NotImplementedError
 
@@ -50,7 +51,7 @@ class RemoveStatementMutationStrategy(MutationStrategy, ABC):
                               Defaults to 3.
 
     Methods:
-        mutate(program: Program) -> None:
+        mutate(program: Program) -> Program:
             Tries to remove one statement from the given program.
             If no removable statements are available, or all retries fail,
             the program remains unchanged.
@@ -60,19 +61,20 @@ class RemoveStatementMutationStrategy(MutationStrategy, ABC):
         self.remove_retries = remove_retries
 
     @override
-    def mutate(self, program: Program):
+    def mutate(self, program: Program) -> Program:
         max_index = len(program) - (1 if program.has_return_statement() else 0)
 
         if max_index <= 0:
-            return
+            return program
 
         for _ in range(self.remove_retries):
             try:
+                program_cp = program.copy()
                 statement_to_remove_idx = random.randrange(max_index)
-                program.remove_statement(statement_to_remove_idx)
-                return
+                program_cp.remove_statement(statement_to_remove_idx)
+                return program_cp
             except RemoveStatementError:
-                pass
+                return program
 
 
 class ReplaceStatementMutationStrategy(MutationStrategy, ABC):
@@ -92,7 +94,7 @@ class ReplaceStatementMutationStrategy(MutationStrategy, ABC):
             that function expects.
 
     Methods:
-        mutate(program: Program) -> None:
+        mutate(program: Program) -> Program:
             Replaces one statement's function and arguments. If the program
             has no eligible statements (only a `return` or is empty),
             the program remains unchanged.
@@ -102,23 +104,27 @@ class ReplaceStatementMutationStrategy(MutationStrategy, ABC):
         self.available_functions = available_functions
 
     @override
-    def mutate(self, program: Program):
+    def mutate(self, program: Program) -> Program:
+        program_cp = program.copy()
+
         func_name = random.choice(list(self.available_functions.keys()))
         args_size = self.available_functions[func_name]
 
-        if not program.variables and args_size > 0:
-            return
+        if not program_cp.variables and args_size > 0:
+            return program
 
-        args = random.choices(program.variables, k=args_size)
+        args = random.choices(program_cp.variables, k=args_size)
 
-        max_index = len(program) - (1 if program.has_return_statement() else 0)
+        max_index = len(program_cp) - (1 if program_cp.has_return_statement() else 0)
         if max_index <= 0:
-            return
+            return program
 
         replace_index = random.randrange(max_index)
-        replace_statement = program.get_statement(replace_index)
+        replace_statement = program_cp.get_statement(replace_index)
         replace_statement.func = func_name
         replace_statement.args = args
+
+        return program_cp
 
 
 class UpdateStatementArgsMutationStrategy(MutationStrategy, ABC):
@@ -131,26 +137,29 @@ class UpdateStatementArgsMutationStrategy(MutationStrategy, ABC):
     statement. The statement's function and target variable are not modified.
 
     Methods:
-        mutate(program: Program) -> None:
+        mutate(program: Program) -> Program:
             Updates the arguments of one statement in the program. If the program
             is empty, no mutation is performed.
     """
 
     @override
-    def mutate(self, program: Program):
+    def mutate(self, program: Program) -> Program:
         if len(program) == 0:
-            return
-        statement_idx = random.randrange(len(program))
-        statement = program.get_statement(statement_idx)
+            return program
+
+        program_cp = program.copy()
+        statement_idx = random.randrange(len(program_cp))
+        statement = program_cp.get_statement(statement_idx)
         statement_args_count = len(statement.args)
 
-        pr_vars = set(program.variables)
+        pr_vars = set(program_cp.variables)
 
         if statement.func != Statement.RETURN_KEYWORD:
             pr_vars.remove(statement.result_var_name)
 
         new_args = random.choices(list(pr_vars), k=statement_args_count)
         statement.args = new_args
+        return program_cp
 
 
 class InsertStatementMutationStrategy(MutationStrategy, ABC):
@@ -171,18 +180,19 @@ class InsertStatementMutationStrategy(MutationStrategy, ABC):
         self.available_functions = available_functions
 
     @override
-    def mutate(self, program: Program):
-        if len(program) == 0:
-            return
+    def mutate(self, program: Program) -> Program:
+        program_cp = program.copy()
 
-        max_index = len(program) - (1 if program.has_return_statement() else 0)
+        max_index = len(program_cp) - (1 if program_cp.has_return_statement() else 0)
         if max_index <= 0:
-            return
+            return program
 
         insert_index = random.randrange(max_index)
 
-        statement = self._generate_random_statement(program.variables)
-        program.insert_statement(statement, insert_index)
+        statement = self._generate_random_statement(program_cp.variables)
+        program_cp.insert_statement(statement, insert_index)
+
+        return program_cp
 
     def _generate_random_statement(self, program_vars: List[str]) -> Statement:
         func_name = random.choice(list(self.available_functions.keys()))

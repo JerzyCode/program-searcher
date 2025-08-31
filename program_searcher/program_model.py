@@ -308,6 +308,9 @@ class Program:
         new_program._statements = [copy.deepcopy(stmt) for stmt in self._statements]
         new_program.variables = self.variables.copy()
         new_program.last_variable_index = self.last_variable_index
+        new_program.execution_error = self.execution_error
+        new_program.graph = self.graph.copy() if self.graph else None
+        new_program.program_str = self.program_str
         return new_program
 
     def to_python_func(self, global_args: Dict[str, object] = {}) -> Callable:

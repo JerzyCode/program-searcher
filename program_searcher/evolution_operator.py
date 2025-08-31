@@ -58,8 +58,7 @@ class TournamentSelectionOperator(EvolutionOperator, ABC):
         mutation_strategies: Dict[MutationStrategy, float],
     ):
         tournament_programs = random.choices(population, k=self.tournament_size)
-        best_program = max(tournament_programs, key=lambda prog: fitnesses[prog])
-        tournament_winner = best_program.copy()
+        tournament_winner = max(tournament_programs, key=lambda prog: fitnesses[prog])
 
         program = population.popleft()
         fitnesses.pop(program)
@@ -68,9 +67,9 @@ class TournamentSelectionOperator(EvolutionOperator, ABC):
         weights = list(mutation_strategies.values())
 
         chosen_strategy = random.choices(strategies, weights=weights, k=1)[0]
-        chosen_strategy.mutate(tournament_winner)
+        mutated_program = chosen_strategy.mutate(tournament_winner)
 
-        population.append(tournament_winner)
+        population.append(mutated_program)
 
 
 class FullPopulationMutationOperator(EvolutionOperator):
@@ -101,10 +100,12 @@ class FullPopulationMutationOperator(EvolutionOperator):
         fitnesses: Dict[Program, float],
         mutation_strategies: Dict[MutationStrategy, float],
     ):
-        for program in population:
+        for index, program in enumerate(population):
             chosen_strategy = random.choices(
                 list(mutation_strategies.keys()),
                 weights=list(mutation_strategies.values()),
                 k=1,
             )[0]
-            chosen_strategy.mutate(program)
+
+            mutated = chosen_strategy.mutate(program)
+            population[index] = mutated

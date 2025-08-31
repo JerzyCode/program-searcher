@@ -177,6 +177,9 @@ class ProgramSearch:
         )
 
         for program in self.population:
+            if program in self.fitnesses and self.fitnesses[program] is not None:
+                continue
+
             if warm_hash is not None and program.to_hash() == warm_hash:
                 self.fitnesses[program] = self.warm_start_program.fitness
             else:
@@ -189,7 +192,6 @@ class ProgramSearch:
                     f"Replacing program at index {index} failed execution: {program.execution_error}"
                 )
                 self.population[index] = self._get_program_replacement()
-                continue
 
     def _replace_equivalent_programs(self):
         seen_program_hashes = set()
