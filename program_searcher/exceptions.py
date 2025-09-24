@@ -14,5 +14,9 @@ class ExecuteProgramError(Exception):
     pass
 
 
-class InvalidProgramSearchArgumentValue(Exception):
+class InvalidProgramSearchArgumentValueError(Exception):
+    pass
+
+
+class InvalidMutationStrategiesError(Exception):
     pass
